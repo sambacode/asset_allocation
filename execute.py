@@ -20,6 +20,7 @@ NAMESPACE = ""
 ###############################################################################
 SCRIPT_DIR = Path(__file__).parent
 DEFAULT_FILE_PATH = SCRIPT_DIR.joinpath("BR CDS and FX.xlsx")
+DEFAULT_OUTPUT_PATH = SCRIPT_DIR.joinpath("testing.xlsx")
 ENDOG_COL = "BRL"
 EXOG_COLS = ["Brazil CDS"]
 N_MIN = 252
@@ -27,26 +28,19 @@ N_MIN = 252
 ###############################################################################
 
 
-def load_data(file_path: Optional[Path] = None) -> tuple[pd.Series, pd.Series]:
-    file_path = file_path or DEFAULT_FILE_PATH
-    sheet_name = "BRL"
-    fx = pd.read_excel(file_path, index_col=0, sheet_name=sheet_name).iloc[:, 0]
-    fx.index = pd.to_datetime(fx.index)
-    fx.name = sheet_name
-
-    sheet_name = "Brazil CDS"
-    cds = pd.read_excel(file_path, index_col=0, sheet_name=sheet_name).iloc[:, 0]
-    cds.index = pd.to_datetime(cds.index)
-    cds.name = sheet_name
-    return fx, cds
-
-
-def _filter_by_period(
-    df: pd.DataFrame, period: str, drop_last_period: bool = True
-) -> pd.DataFrame:
-    df = df.reindex(df.index.to_series().groupby(df.index.to_period(period)).max())
-    n = -1 if drop_last_period else len(df.index)
-    return df.iloc[:n]
+def _calculate_first_signal(
+    df: pd.DataFrame, endog_col: str, exog_cols: list[str], cols_betas: list[str]
+):
+    # timeframe 0 only used to generate first positioning signal
+    s_est_betas_0 = df[cols_betas].iloc[-1]
+    s_ln_returns_0 = df[exog_cols].sum()
+    s_returns_0 = np.exp(s_ln_returns_0) - 1
+    expected_return_0 = (s_est_betas_0.values * s_returns_0.values).sum()
+    realized_return_0 = np.exp(df[endog_col].sum()) - 1
+    outperformance_0 = realized_return_0 - expected_return_0
+    first_signal = -1 if outperformance_0 else 1
+    logger.info("Singal 0 is %s" % "positive" if outperformance_0 else "negative")
+    return first_signal
 
 
 def _calculate_parameters(y: pd.Series, x: pd.Series) -> pd.Series:
@@ -58,8 +52,20 @@ def _calculate_parameters(y: pd.Series, x: pd.Series) -> pd.Series:
     return s_params
 
 
-def _percentage_formatter(x, _):
+def _format_percentage(x, _):
     return f"{x * 100:.1f}%"
+
+
+def _filter_by_period(
+    df: pd.DataFrame, period: str, drop_last_period: bool = True
+) -> pd.DataFrame:
+    df = df.reindex(df.index.to_series().groupby(df.index.to_period(period)).max())
+    n = -1 if drop_last_period else len(df.index)
+    return df.iloc[:n]
+
+
+def _get_rebalance_trades(df: pd.DataFrame, steps: int) -> pd.DatetimeIndex:
+    return df.index[::steps].copy()
 
 
 def calculate_returns(
@@ -119,25 +125,40 @@ def generate_parameters_series(
     return pd.DataFrame(aux_params).T
 
 
+def load_data(file_path: Optional[Path] = None) -> tuple[pd.Series, pd.Series]:
+    file_path = file_path or DEFAULT_FILE_PATH
+    sheet_name = "BRL"
+    fx = pd.read_excel(file_path, index_col=0, sheet_name=sheet_name).iloc[:, 0]
+    fx.index = pd.to_datetime(fx.index)
+    fx.name = sheet_name
+
+    sheet_name = "Brazil CDS"
+    cds = pd.read_excel(file_path, index_col=0, sheet_name=sheet_name).iloc[:, 0]
+    cds.index = pd.to_datetime(cds.index)
+    cds.name = sheet_name
+    return fx, cds
+
+
 ###############################################################################
-def trading_strategy(
-    df_params: pd.DataFrame, df_return_ln: pd.DataFrame
-) -> pd.DataFrame:
+def backtest_trading_strategy(
+    df_params: pd.DataFrame,
+    df_return_ln: pd.DataFrame,
+    steps: int,
+    output_path: Optional[Path] = None,
+    fmt: Literal["series", "dataframe"] = "series",
+) -> Union[pd.DataFrame, pd.Series]:
     COL_TIMEFRAME_NBR = "timeframe_nbr"
     COL_EXPECTED_RETURN_ACC = "expected_return_acc"
     COL_REALIZED_RETURN_ACC = "realized_return_acc"
     COL_OUTPERFORMANCE_RETURN_ACC = "outperformance_return_acc"
     COL_OUTPERFORMANCE_RETURN_LN_ACC = "outperformance_return_ln_acc"
     COL_OUTPERFORMANCE_RETURN_LN = "outperformance_return_ln"
+    COL_RETURN_LN_ACC_STRATEGY = "return_ln_acc_strategy"
     COL_SIGNAL = "signal"
     # COL_ALPHA = "alpha"
 
-    def _get_reblance_trades() -> pd.DatetimeIndex:
-        N_DAYS = 63
-        return df_trading_period.index[::N_DAYS].copy()
-
     df_aux = pd.concat([df_return_ln, df_params], axis=1)
-    rebalance_dates = _get_reblance_trades()
+    rebalance_dates = _get_rebalance_trades(df_aux.dropna(), steps=steps)
     df_aux[COL_TIMEFRAME_NBR] = (
         df_aux.index.to_series().isin(rebalance_dates).shift(1).cumsum().fillna(0)
     )
@@ -145,18 +166,18 @@ def trading_strategy(
 
     cols_betas = [f"beta_{col}" for col in EXOG_COLS]
     list_df_outperformance = []
-    first_signal = 1
     for timeframe, sub_df in df_trading_period.groupby(COL_TIMEFRAME_NBR):
         if timeframe == 0:
-            signal = first_signal  # FIXME
+            signal = _calculate_first_signal(
+                df_aux[df_aux["timeframe_nbr"] == 0].copy(),
+                ENDOG_COL,
+                EXOG_COLS,
+                cols_betas,
+            )
             s_est_betas_previous = sub_df[cols_betas].iloc[-1]
-            est_alpha_previous = sub_df["alpha"].iloc[-1]
+            # est_alpha_previous = sub_df["alpha"].iloc[-1]
             continue
 
-        # print(
-        #     f"Timeframe: #{timeframe:02.0f}
-        # |  Signal: {'On' if signal else 'Off': <3}  |  "
-        # )
         df_ln_returns_acc = sub_df[EXOG_COLS].cumsum().copy()
         df_returns_acc = np.exp(df_ln_returns_acc) - 1
         df_beta_returns_acc = pd.DataFrame(
@@ -167,7 +188,7 @@ def trading_strategy(
         )
         s_expected_returns_acc = df_beta_returns_acc.sum(
             axis=1
-        )  # TODO: how to incorporate alpha in expected returns?
+        )  # NOTE: should we incorporate alpha in expected returns?
         s_expected_returns_acc.name = COL_EXPECTED_RETURN_ACC
         s_realized_returns_acc = np.exp(sub_df[ENDOG_COL].cumsum()) - 1
         s_realized_returns_acc.name = COL_REALIZED_RETURN_ACC
@@ -194,13 +215,18 @@ def trading_strategy(
         )
         sub_df_outperformance[COL_SIGNAL] = signal
         list_df_outperformance.append(sub_df_outperformance)
-        signal = 1 if s_outperformance_acc.iloc[-1] > 0 else -1
-        # if timeframe == 1:
-        #     break
+        signal = -1 if s_outperformance_acc.iloc[-1] > 0 else 1
 
     df_outperformance = pd.concat(list_df_outperformance)
-    df_base = pd.concat([df_aux, df_outperformance], axis=1)
-    df_base.to_excel("testing.xlsx")
+    s_return_ln_acc_strategy = (
+        df_outperformance[COL_OUTPERFORMANCE_RETURN_LN] * df_outperformance[COL_SIGNAL]
+    ).cumsum()
+    s_return_ln_acc_strategy.name = COL_RETURN_LN_ACC_STRATEGY
+    df_base = pd.concat([df_aux, df_outperformance, s_return_ln_acc_strategy], axis=1)
+
+    output_path = output_path or DEFAULT_OUTPUT_PATH
+    df_base.to_excel(output_path)
+    return s_return_ln_acc_strategy if fmt == "series" else df_base
 
 
 def main() -> None:
@@ -209,9 +235,8 @@ def main() -> None:
     logger.info("Data loaded!")
     df_returns = calculate_returns(prices_series, type="log", period="D")
     df_param = generate_parameters_series(df_returns, ENDOG_COL, EXOG_COLS, start=252)
-    trading_strategy(df_param, df_returns)
-    breakpoint()
-    return
+    df_strategy = backtest_trading_strategy(df_param, df_returns, steps=63)
+    return df_strategy
 
 
 if __name__ == "__main__":
