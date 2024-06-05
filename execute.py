@@ -23,11 +23,12 @@ SCRIPT_DIR = Path(__file__).parent
 DEFAULT_FILE_PATH = SCRIPT_DIR.joinpath("BR CDS and FX.xlsx")
 ENDOG_COL = "BRL"
 EXOG_COLS = ["Brazil CDS"]
+N_MIN = 252
 
 ###############################################################################
 
 
-def read_data(file_path: Optional[Path] = None) -> tuple[pd.Series, pd.Series]:
+def load_data(file_path: Optional[Path] = None) -> tuple[pd.Series, pd.Series]:
     file_path = file_path or DEFAULT_FILE_PATH
     sheet_name = "BRL"
     fx = pd.read_excel(file_path, index_col=0, sheet_name=sheet_name).iloc[:, 0]
@@ -41,13 +42,12 @@ def read_data(file_path: Optional[Path] = None) -> tuple[pd.Series, pd.Series]:
     return fx, cds
 
 
-def filter_by_period(df: pd.DataFrame, period: str) -> pd.DataFrame:
-    new_index = (
-        pd.DatetimeIndex(  # TODO: add check for last date, if should be included or not
-            df.index.to_series().groupby(df.index.to_period(period)).max()
-        )
-    )
-    return df.loc[new_index].copy()
+def _filter_by_period(
+    df: pd.DataFrame, period: str, drop_last_period: bool = True
+) -> pd.DataFrame:
+    df = df.reindex(df.index.to_series().groupby(df.index.to_period(period)).max())
+    n = -1 if drop_last_period else len(df.index)
+    return df.iloc[:n]
 
 
 def _calculate_parameters(y: pd.Series, x: pd.Series) -> pd.Series:
@@ -70,9 +70,14 @@ def calculate_returns(
     prices_series: Union[list[Union[pd.Series, pd.DataFrame]], pd.DataFrame],
     type: Literal["log", " simple"] = "log",
     period: Optional[Literal["D", " W", " M", " Q", " Y"]] = None,
+    custom_period: Optional[list[pd.Timestamp]] = None,
 ) -> pd.DataFrame:
     if type not in ["log", "simple"]:
         raise ValueError("type must be 'log' or 'simple'")
+    logger.info(
+        "Calculating returns: type '%s' | period '%s'" %
+        (type.upper(), period if not custom_period else "Custom"),
+    )
 
     df_prices = (
         prices_series
@@ -81,7 +86,10 @@ def calculate_returns(
     )
     df_prices = df_prices.sort_index().fillna(method="ffill")
     df_prices.index.name = None
-    df_period = filter_by_period(df_prices, period or "D")
+
+    if custom_period:
+        df_prices = df_prices.reindex(custom_period, method="ffill")
+    df_period = _filter_by_period(df_prices, period or "D")
 
     if type == "log":
         df_return = np.log(df_period / df_period.shift(1)).copy()
@@ -91,13 +99,19 @@ def calculate_returns(
 
 
 ###############################################################################
-def _generate_parameters_series(df_return_ln: pd.DataFrame) -> pd.DataFrame:
-    N_MIN = 252
-    N_MAX = len(df_return_ln.index)
+def generate_parameters_series(
+    df_return_ln: pd.DataFrame,
+    endog_col: str,
+    exog_cols: list[str],
+    start: Optional[Union[int, pd.Timestamp]] = None,
+) -> pd.DataFrame:
+    start = start or N_MIN
+    start = start if isinstance(start, int) else df_return_ln.index.get_loc(start) + 1
+    end = len(df_return_ln.index)
     aux_params = {}
-    for n in range(N_MIN, N_MAX + 1):
+    for n in range(start, end + 1):
         sub_df = df_return_ln.iloc[:n].copy()
-        param = _calculate_parameters(sub_df[ENDOG_COL], sub_df[EXOG_COLS])
+        param = _calculate_parameters(sub_df[endog_col], sub_df[exog_cols])
         ref_date = sub_df.index[-1]
         aux_params[ref_date] = param.to_dict()
     return pd.DataFrame(aux_params).T
@@ -188,9 +202,12 @@ def trading_strategy(
 
 
 def main() -> None:
-    breakpoint()
-    prices_series = read_data()
-    df_returns = calculate_returns(prices_series)
+    logger.info("Loading data...")
+    prices_series = load_data()
+    logger.info("Data loaded!")
+    df_returns = calculate_returns(prices_series, type="log", period="D")
+    df_param = generate_parameters_series(df_returns, ENDOG_COL, EXOG_COLS, start=252)
+
     breakpoint()
     return
 
