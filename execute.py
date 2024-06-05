@@ -1,13 +1,12 @@
 import argparse
 import logging
-from datetime import date
 from pathlib import Path
 from typing import Literal, Optional, Union
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import statsmodels.api as sm
+from matplotlib import pyplot as plt
 from matplotlib.pyplot import twinx
 from matplotlib.ticker import FuncFormatter
 
@@ -63,9 +62,6 @@ def _percentage_formatter(x, _):
     return f"{x * 100:.1f}%"
 
 
-###############################################################################
-
-
 def calculate_returns(
     prices_series: Union[list[Union[pd.Series, pd.DataFrame]], pd.DataFrame],
     type: Literal["log", " simple"] = "log",
@@ -75,8 +71,8 @@ def calculate_returns(
     if type not in ["log", "simple"]:
         raise ValueError("type must be 'log' or 'simple'")
     logger.info(
-        "Calculating returns: type '%s' | period '%s'" %
-        (type.upper(), period if not custom_period else "Custom"),
+        "Calculating returns: type '%s' | period '%s'"
+        % (type.upper(), period if not custom_period else "Custom"),
     )
 
     df_prices = (
@@ -98,7 +94,6 @@ def calculate_returns(
     return df_return.dropna().copy()
 
 
-###############################################################################
 def generate_parameters_series(
     df_return_ln: pd.DataFrame,
     endog_col: str,
@@ -108,6 +103,13 @@ def generate_parameters_series(
     start = start or N_MIN
     start = start if isinstance(start, int) else df_return_ln.index.get_loc(start) + 1
     end = len(df_return_ln.index)
+    logger.info(
+        "Estimating parameters for range: %s - %s"
+        % (
+            df_return_ln.index[start - 1].strftime("%b/%d/%y"),
+            df_return_ln.index[end - 1].strftime("%b/%d/%y"),
+        )
+    )
     aux_params = {}
     for n in range(start, end + 1):
         sub_df = df_return_ln.iloc[:n].copy()
@@ -207,7 +209,7 @@ def main() -> None:
     logger.info("Data loaded!")
     df_returns = calculate_returns(prices_series, type="log", period="D")
     df_param = generate_parameters_series(df_returns, ENDOG_COL, EXOG_COLS, start=252)
-
+    trading_strategy(df_param, df_returns)
     breakpoint()
     return
 
