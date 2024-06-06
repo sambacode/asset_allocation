@@ -6,6 +6,8 @@ from typing import Literal, Optional, Union
 import numpy as np
 import pandas as pd
 import statsmodels.api as sm
+from matplotlib import pyplot as plt
+from matplotlib.ticker import FuncFormatter
 
 from bwlogger import StyleAdapter, basic_setup
 
@@ -155,7 +157,7 @@ def backtest_trading_strategy(
     exog_cols: list[str],
     steps: int,
     output_path: Optional[Path] = None,
-    fmt: Literal["series", "dataframe"] = "series",
+    fmt: Literal["dataframe", "series"] = "dataframe",
 ) -> Union[pd.DataFrame, pd.Series]:
     # COL_ALPHA = "alpha"
 
@@ -229,21 +231,106 @@ def backtest_trading_strategy(
     output_path = output_path or DEFAULT_OUTPUT_PATH
     logger.info(f"Saving results to {output_path}")
     df_base.to_excel(output_path)
-    return s_return_ln_acc_strategy if fmt == "series" else df_base
+    return df_base if fmt == "series" else df_base
+
+
+def plot_results(
+    df_returns_ln_acc: pd.DataFrame,
+    s_return_ln_acc_strategy: pd.Series,
+    s_alpha: pd.Series,
+    s_beta: pd.Series,
+    output_path: Optional[Path] = None,
+) -> None:
+    x_range = (df_returns_ln_acc.index.min(), df_returns_ln_acc.index.max())
+
+    # plot return
+    fig, axes = plt.subplots(figsize=(18, 12), nrows=2)
+
+    axes[0].set_title("BRL x Brazil CDS")
+    df_returns_ln_acc.plot(ax=axes[0], color=["blue", "orange"])
+    s_return_ln_acc_strategy.plot(ax=axes[0], label="Trading Strategy", color="green")
+    axes[0].legend()
+
+    # Add gridlines to the first plot
+    axes[0].grid(True, color="gray", linestyle="--")
+
+    # Add a horizontal line at y=0 to the first plot
+    axes[0].axhline(y=0, color="black")
+
+    # Move the y-axis label and ticks to the right for the first plot
+    axes[0].yaxis.set_label_position("right")
+    axes[0].yaxis.tick_right()
+    axes[0].set_ylabel("Cumulative Log Returns")
+
+    # Apply the percentage formatter to the first plot
+    axes[0].yaxis.set_major_formatter(FuncFormatter(_format_percentage))
+
+    # Set x-axis limits to the first and last data points
+    axes[0].set_xlim(x_range)
+
+    # beta and alpha plot
+    s_beta.plot(ax=axes[1], color="blue", label="Beta")
+    ax2 = axes[1].twinx()
+    s_alpha.plot(ax=ax2, color="orange", label="Alpha")
+
+    # Add gridlines to the second plot
+    axes[1].grid(True, color="gray", linestyle="--")
+
+    # Set y-axis labels
+    axes[1].set_ylabel("Beta")
+    ax2.set_ylabel("Alpha")
+
+    # Set x-axis limits to the first and last data points
+    axes[1].set_xlim(x_range)
+
+    y_min, y_max = axes[1].get_ylim()
+    y_range = y_max - y_min
+    y_mid = (y_max + y_min) / 2
+    axes[1].set_ylim(y_mid - y_range / 2, y_mid + y_range / 2 * 1.2)
+
+    y_min, y_max = ax2.get_ylim()
+    y_range = y_max - y_min
+    y_mid = (y_max + y_min) / 2
+    ax2.set_ylim(y_mid - y_range / 2, y_mid + y_range / 2 * 1.2)
+
+    # Combine legends from both axes
+    lines1, labels1 = axes[1].get_legend_handles_labels()
+    lines2, labels2 = ax2.get_legend_handles_labels()
+    axes[1].legend(lines1 + lines2, labels1 + labels2, loc="upper left", ncol=2)
+
+    fig.tight_layout(
+        rect=(0, 0, 1, 0.96)
+    )  # Adjust the layout to make space for the title
+
+    output_path = output_path or SCRIPT_DIR.joinpath("plot.svg")
+    logger.info(f"Saving plot to {output_path}")
+    fig.savefig(output_path)
+    plt.close()
 
 
 def main(
-    endog_col: str, exog_cols: list[str], file_path: Optional[Path] = None
+    endog_col: str,
+    exog_cols: list[str],
+    file_path: Optional[Path] = None,
+    output_results: Optional[Path] = None,
+    output_plots: Optional[Path] = None,
 ) -> None:
     logger.info("Loading data...")
-    prices_series = load_data()
+    prices_series = load_data(file_path)
     logger.info("Data loaded!")
     df_returns = calculate_returns(prices_series, type="log", period="D")
     df_param = generate_parameters_series(df_returns, endog_col, exog_cols, start=252)
     df_strategy = backtest_trading_strategy(
-        df_param, df_returns, endog_col, exog_cols, steps=63
+        df_param, df_returns, endog_col, exog_cols, steps=63, output_path=output_results
     )
-    return df_strategy
+    plot_results(
+        df_returns_ln_acc=df_strategy[[endog_col] + exog_cols].cumsum(),
+        s_return_ln_acc_strategy=df_strategy[COL_RETURN_LN_ACC_STRATEGY],
+        s_alpha=df_param["alpha"],
+        s_beta=df_param[f"beta_{exog_cols[0]}"],
+        output_path=output_plots,
+    )
+    return
 
 
 if __name__ == "__main__":
@@ -264,7 +351,23 @@ if __name__ == "__main__":
         default=EXOG_COLS,
         help="Path to the file with prices' data.",
     )
+    parser.add_argument(
+        "--output-results",
+        required=False,
+        help="Results file path.",
+    )
+    parser.add_argument(
+        "--output-plot",
+        required=False,
+        help="Plot file path.",
+    )
     args = parser.parse_args()
 
     basic_setup(APPNAME, False, SCRIPT_DIR, NAMESPACE)
-    main(args.endog_col, args.exog_cols, args.file_path)
+    main(
+        args.endog_col,
+        args.exog_cols,
+        args.file_path,
+        args.output_results,
+        args.output_plot,
+    )
