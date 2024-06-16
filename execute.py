@@ -38,7 +38,7 @@ N_MIN = 252
 
 
 def _exponentially_decaying_weights(
-    n, alpha: Optional[float] = None, halflife: Optional[int] = None
+    n: int, alpha: Optional[float] = None, halflife: Optional[int] = None
 ):
     """
     Exponentially decaying weights for the linear regression.
