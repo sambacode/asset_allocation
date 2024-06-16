@@ -37,6 +37,21 @@ N_MIN = 252
 ###############################################################################
 
 
+def _exponentially_decaying_weights(
+    n, alpha: Optional[float] = None, halflife: Optional[int] = None
+):
+    """
+    Exponentially decaying weights for the linear regression.
+
+    """
+    if alpha is None:
+        if halflife:
+            alpha = 1 - np.exp(-np.log(2) / halflife)
+        else:
+            raise ValueError("Either alpha or halflife must be specified.")
+    return [(alpha) * ((1 - alpha) ** (n - i)) for i in range(0, n)]
+
+
 def _calculate_first_signal(
     df: pd.DataFrame, endog_col: str, exog_cols: list[str], cols_betas: list[str]
 ):
