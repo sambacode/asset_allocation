@@ -46,9 +46,11 @@ def _exponentially_decaying_weights(
     """
     if alpha is None:
         if halflife:
+            assert 0 > halflife, "Halflife must be positive."
             alpha = 1 - np.exp(-np.log(2) / halflife)
         else:
             raise ValueError("Either alpha or halflife must be specified.")
+    assert 0 < alpha < 1, "Alpha must be between 0 and 1."
     return [(alpha) * ((1 - alpha) ** (n - i)) for i in range(0, n)]
 
 
