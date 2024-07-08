@@ -9,7 +9,10 @@ import statsmodels.api as sm
 from matplotlib import pyplot as plt
 from matplotlib.ticker import FuncFormatter
 
+from bwaa.bw_arp_trader.fx.bw_aa_fx_signals import INVERSE_QUOTED, bbg_ticker
+from bwbbgdl import GoGet
 from bwlogger import StyleAdapter, basic_setup
+from bwutils import TODAY, Date
 
 logger = StyleAdapter(logging.getLogger(__name__))
 
@@ -34,7 +37,92 @@ ENDOG_COL = "BRL"
 EXOG_COLS = ["Brazil CDS"]
 N_MIN = 252
 
+# these are in ER in USD
+EM_CDS_TRACKER_DICT = {
+    "BRL": "GSCDBRBE Index",
+    "CNY": "GSCDCHBE Index",
+    "MXN": "GSCDMEBE Index",
+    "ZAR": "GSCDSOBE Index",
+}
+
+# these are in LOC ER with pnl converted to USD
+IRS_TRACKER_DICT = {
+    "BRL": "GSSWBRN5 Index",
+    "CNY": "GSSWCNN5 Index",
+    "MXN": "GSSWMXN5 Index",
+    "ZAR": "GSSWZAN5 Index",
+}
+
+EQ_TRACKER_DICT = {
+    "BRL": "BNPIFBR Index",  # in BRL
+    "CNY": "BNPIFCNO Index",  # China onshore but with pnl converted to USD
+    "ZAR": "BNPIFSA Index",  # in ZAR
+    # "MXN": "???? Index",
+}
+
+# these are in ER in USD
+FX_TRACKER_DICT = {x: f"JPFCT{x} Index" for x in EM_CDS_TRACKER_DICT}
+
 ###############################################################################
+
+
+def country_assets_portfolio(
+    ccy: str,
+    vol_target: float = 0.1,
+    dt_ini: Date = "1990-12-31",
+    dt_end: Date = TODAY,
+) -> pd.DataFrame:
+    assets_ticker_dict = {
+        EM_CDS_TRACKER_DICT[ccy]: "5Y CDS",
+        IRS_TRACKER_DICT[ccy]: "5Y IRS",
+    }
+
+    g = GoGet(enforce_strict_matching=True)
+
+    tracker_df: pd.DataFrame = g.fetch(
+        tickers=list(assets_ticker_dict),
+        fields="PX_LAST",
+        dt_ini=dt_ini,
+        dt_end=dt_end,
+    )
+
+    tracker_df = tracker_df.pivot_table(index="date", columns="id")
+    tracker_df.columns = tracker_df.columns.droplevel(0)
+    tracker_df = tracker_df.rename(columns=assets_ticker_dict).dropna()
+
+
+    backtest = pd.Series(index=tracker_df.index)
+    backtest.iloc[0] = 100.0
+
+    cov = np.log(tracker_df).diff(21).cov() * 12.0
+    vols = pd.Series(index=cov.index, data=np.diag(cov))
+    w = (1 / vols) / (1 / vols).sum()
+    adj_factor = vol_target / np.sqrt(w @ cov @ w)
+    w = adj_factor * w
+
+    q = backtest.iloc[0] * w / tracker_df.iloc[0]
+
+    for t, tm1 in zip(backtest.index[1:], backtest.index[:-1]):
+        pnl = ((tracker_df.loc[t] - tracker_df.loc[tm1]) @ q).sum()
+        backtest[t] = backtest[tm1] + pnl
+        if t.month != tm1.month:
+            if tracker_df.loc[:t].shape[0] > 252:
+                cov = np.log(tracker_df.loc[:tm1]).diff(21).cov() * 12.0
+                vols = pd.Series(index=cov.index, data=np.diag(cov))
+
+            w = (1 / vols) / (1 / vols).sum()
+            adj_factor = vol_target / np.sqrt(w @ cov @ w)
+            w = adj_factor * w
+            q = backtest[tm1] * w / tracker_df.loc[tm1]
+
+    backtest = pd.concat(
+        [tracker_df, backtest.to_frame("assets")],
+        axis=1,
+        join="outer",
+        sort=True,
+    )
+
+    return backtest
 
 
 def _exponentially_decaying_weights(
@@ -388,3 +476,5 @@ if __name__ == "__main__":
         args.output_results,
         args.output_plot,
     )
+
+    country_assets_portfolio("BRL")
