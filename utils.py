@@ -153,3 +153,17 @@ def optmize_risk_budget(
         **kwargs,
     )
     return pd.Series(res.x, index=cov.index, name="wegihts_target")
+
+
+def check_weights_in_tolerance(
+    weights: pd.Series,
+    weights_target: pd.Series,
+    tol_by_asset: Optional[float] = None,
+    tol_agg: Optional[float] = None,
+) -> bool:
+    cond1, cond2 = (True, True)
+    if tol_by_asset:
+        cond1 = (weights - weights_target).abs() <= tol_by_asset
+    if tol_agg:
+        cond2 = (weights - weights_target).abs().sum() <= tol_agg
+    return cond1 and cond2
