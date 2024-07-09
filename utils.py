@@ -167,3 +167,9 @@ def check_weights_in_tolerance(
     if tol_agg:
         cond2 = (weights - weights_target).abs().sum() <= tol_agg
     return cond1 and cond2
+
+
+def get_available_trackers(df: pd.DataFrame, min_data_points: int = 100) -> None:
+    s_data_points = (~df.isna()).sum()
+    filt = s_data_points >= min_data_points
+    return s_data_points[filt].index
