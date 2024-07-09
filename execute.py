@@ -5,14 +5,13 @@ from typing import Literal, Optional, Union
 
 import numpy as np
 import pandas as pd
-import statsmodels.api as sm
-from matplotlib import pyplot as plt
-from matplotlib.ticker import FuncFormatter
 
-from bwaa.bw_arp_trader.fx.bw_aa_fx_signals import INVERSE_QUOTED, bbg_ticker
 from bwbbgdl import GoGet
 from bwlogger import StyleAdapter, basic_setup
 from bwutils import TODAY, Date
+
+from utils import _calculate_parameters, calculate_returns
+from plot import plot_results
 
 logger = StyleAdapter(logging.getLogger(__name__))
 
@@ -90,7 +89,6 @@ def country_assets_portfolio(
     tracker_df.columns = tracker_df.columns.droplevel(0)
     tracker_df = tracker_df.rename(columns=assets_ticker_dict).dropna()
 
-
     backtest = pd.Series(index=tracker_df.index)
     backtest.iloc[0] = 100.0
 
@@ -125,23 +123,6 @@ def country_assets_portfolio(
     return backtest
 
 
-def _exponentially_decaying_weights(
-    n: int, alpha: Optional[float] = None, halflife: Optional[int] = None
-):
-    """
-    Exponentially decaying weights for the linear regression.
-
-    """
-    if alpha is None:
-        if halflife:
-            assert 0 > halflife, "Halflife must be positive."
-            alpha = 1 - np.exp(-np.log(2) / halflife)
-        else:
-            raise ValueError("Either alpha or halflife must be specified.")
-    assert 0 < alpha < 1, "Alpha must be between 0 and 1."
-    return [(alpha) * ((1 - alpha) ** (n - i)) for i in range(0, n)]
-
-
 def _calculate_first_signal(
     df: pd.DataFrame, endog_col: str, exog_cols: list[str], cols_betas: list[str]
 ):
@@ -157,61 +138,8 @@ def _calculate_first_signal(
     return first_signal
 
 
-def _calculate_parameters(y: pd.Series, x: pd.Series) -> pd.Series:
-    model = sm.OLS(y, sm.add_constant(x)).fit()
-    s_params = model.params.copy()
-    s_params.index = [
-        "alpha" if idx == "const" else f"beta_{idx}" for idx in s_params.index
-    ]
-    return s_params
-
-
-def _format_percentage(x, _):
-    return f"{x * 100:.1f}%"
-
-
-def _filter_by_period(
-    df: pd.DataFrame, period: str, drop_last_period: bool = True
-) -> pd.DataFrame:
-    df = df.reindex(df.index.to_series().groupby(df.index.to_period(period)).max())
-    n = -1 if drop_last_period else len(df.index)
-    return df.iloc[:n]
-
-
 def _get_rebalance_trades(df: pd.DataFrame, steps: int) -> pd.DatetimeIndex:
     return df.index[::steps].copy()
-
-
-def calculate_returns(
-    prices_series: Union[list[Union[pd.Series, pd.DataFrame]], pd.DataFrame],
-    type: Literal["log", " simple"] = "log",
-    period: Optional[Literal["D", " W", " M", " Q", " Y"]] = None,
-    custom_period: Optional[list[pd.Timestamp]] = None,
-) -> pd.DataFrame:
-    if type not in ["log", "simple"]:
-        raise ValueError("type must be 'log' or 'simple'")
-    logger.info(
-        "Calculating returns: type '%s' | period '%s'"
-        % (type.upper(), period if not custom_period else "Custom"),
-    )
-
-    df_prices = (
-        prices_series
-        if isinstance(prices_series, pd.DataFrame)
-        else pd.concat(prices_series, axis=1, join="outer")
-    )
-    df_prices = df_prices.sort_index().fillna(method="ffill")
-    df_prices.index.name = None
-
-    if custom_period:
-        df_prices = df_prices.reindex(custom_period, method="ffill")
-    df_period = _filter_by_period(df_prices, period or "D")
-
-    if type == "log":
-        df_return = np.log(df_period / df_period.shift(1)).copy()
-    else:
-        df_return = (df_period / df_period.shift(1) - 1).copy()
-    return df_return.dropna().copy()
 
 
 def generate_parameters_series(
@@ -337,80 +265,6 @@ def backtest_trading_strategy(
     logger.info(f"Saving results to {output_path}")
     df_base.to_excel(output_path)
     return df_base if fmt == "series" else df_base
-
-
-def plot_results(
-    df_returns_ln_acc: pd.DataFrame,
-    s_return_ln_acc_strategy: pd.Series,
-    s_alpha: pd.Series,
-    s_beta: pd.Series,
-    output_path: Optional[Path] = None,
-) -> None:
-    x_range = (df_returns_ln_acc.index.min(), df_returns_ln_acc.index.max())
-
-    # plot return
-    fig, axes = plt.subplots(figsize=(18, 12), nrows=2)
-
-    axes[0].set_title("BRL x Brazil CDS")
-    df_returns_ln_acc.plot(ax=axes[0], color=["blue", "orange"])
-    s_return_ln_acc_strategy.plot(ax=axes[0], label="Trading Strategy", color="green")
-    axes[0].legend()
-
-    # Add gridlines to the first plot
-    axes[0].grid(True, color="gray", linestyle="--")
-
-    # Add a horizontal line at y=0 to the first plot
-    axes[0].axhline(y=0, color="black")
-
-    # Move the y-axis label and ticks to the right for the first plot
-    axes[0].yaxis.set_label_position("right")
-    axes[0].yaxis.tick_right()
-    axes[0].set_ylabel("Cumulative Log Returns")
-
-    # Apply the percentage formatter to the first plot
-    axes[0].yaxis.set_major_formatter(FuncFormatter(_format_percentage))
-
-    # Set x-axis limits to the first and last data points
-    axes[0].set_xlim(x_range)
-
-    # beta and alpha plot
-    s_beta.plot(ax=axes[1], color="blue", label="Beta")
-    ax2 = axes[1].twinx()
-    s_alpha.plot(ax=ax2, color="orange", label="Alpha")
-
-    # Add gridlines to the second plot
-    axes[1].grid(True, color="gray", linestyle="--")
-
-    # Set y-axis labels
-    axes[1].set_ylabel("Beta")
-    ax2.set_ylabel("Alpha")
-
-    # Set x-axis limits to the first and last data points
-    axes[1].set_xlim(x_range)
-
-    y_min, y_max = axes[1].get_ylim()
-    y_range = y_max - y_min
-    y_mid = (y_max + y_min) / 2
-    axes[1].set_ylim(y_mid - y_range / 2, y_mid + y_range / 2 * 1.2)
-
-    y_min, y_max = ax2.get_ylim()
-    y_range = y_max - y_min
-    y_mid = (y_max + y_min) / 2
-    ax2.set_ylim(y_mid - y_range / 2, y_mid + y_range / 2 * 1.2)
-
-    # Combine legends from both axes
-    lines1, labels1 = axes[1].get_legend_handles_labels()
-    lines2, labels2 = ax2.get_legend_handles_labels()
-    axes[1].legend(lines1 + lines2, labels1 + labels2, loc="upper left", ncol=2)
-
-    fig.tight_layout(
-        rect=(0, 0, 1, 0.96)
-    )  # Adjust the layout to make space for the title
-
-    output_path = output_path or SCRIPT_DIR.joinpath("plot.svg")
-    logger.info(f"Saving plot to {output_path}")
-    fig.savefig(output_path)
-    plt.close()
 
 
 def main(
