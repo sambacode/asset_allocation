@@ -6,7 +6,9 @@ import pandas as pd
 import statsmodels.api as sm
 from scipy.optimize import minimize
 
+from bwbbgdl import GoGet
 from bwlogger import StyleAdapter
+from bwutils import TODAY, Date
 
 logger = StyleAdapter(logging.getLogger(__name__))
 
@@ -126,8 +128,12 @@ def risk_budget_objective(
     return np.square(rc - rc_t).sum() * 1e9
 
 
-def total_weight_constraint(w: pd.Series) -> float:
+def _total_weight_constraint(w: pd.Series) -> float:
     return w.sum() - 1.0
+
+
+def _long_only_constraint(w: pd.Series) -> float:
+    return w
 
 
 def optmize_risk_budget(
@@ -135,6 +141,7 @@ def optmize_risk_budget(
     rc_t: Optional[pd.Series] = None,
     w0: Optional[pd.Series] = None,
     cons: Optional[list[dict[str, Callable[pd.Series, pd.Series]]]] = [],
+    long_only: bool = True,
     **kwargs,
 ) -> pd.Series:
     n = len(cov.index)
@@ -142,8 +149,9 @@ def optmize_risk_budget(
         w0 = pd.Series([1] * n, index=cov.index) / n
     if rc_t is None:
         rc_t = pd.Series([1] * n, index=cov.index) / n
-    cons_sum_1 = {"type": "eq", "fun": total_weight_constraint}
-    cons = tuple(cons + [cons_sum_1])
+    cons_sum_1 =[{"type": "eq", "fun": _total_weight_constraint}]
+    cons_sum_2 = [{"type": "ineq", "fun": _long_only_constraint}] if long_only else []
+    cons = tuple(cons + cons_sum_1 + cons_sum_2)
 
     res = minimize(
         risk_budget_objective,
@@ -173,3 +181,25 @@ def get_available_trackers(df: pd.DataFrame, min_data_points: int = 100) -> None
     s_data_points = (~df.isna()).sum()
     filt = s_data_points >= min_data_points
     return s_data_points[filt].index
+
+
+def load_trackers(
+    mapper_ticker: dict[str, str],
+    dt_ini: Date = "1990-12-31",
+    dt_end: Date = TODAY,
+) -> pd.DataFrame:
+    inverse_mapper_ticker = {v: k for k, v in mapper_ticker.items()}
+    tickers = list(mapper_ticker.values())
+
+    g = GoGet(enforce_strict_matching=True)
+    tracker_df: pd.DataFrame = g.fetch(
+        tickers=tickers,
+        fields="PX_LAST",
+        dt_ini=dt_ini,
+        dt_end=dt_end,
+    )
+
+    tracker_df = tracker_df.pivot_table(index="date", columns="id")
+    tracker_df.columns = tracker_df.columns.droplevel(0)
+    tracker_df = tracker_df.rename(columns=inverse_mapper_ticker)
+    return tracker_df
