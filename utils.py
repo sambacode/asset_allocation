@@ -149,7 +149,7 @@ def optmize_risk_budget(
         w0 = pd.Series([1] * n, index=cov.index) / n
     if rc_t is None:
         rc_t = pd.Series([1] * n, index=cov.index) / n
-    cons_sum_1 =[{"type": "eq", "fun": _total_weight_constraint}]
+    cons_sum_1 = [{"type": "eq", "fun": _total_weight_constraint}]
     cons_sum_2 = [{"type": "ineq", "fun": _long_only_constraint}] if long_only else []
     cons = tuple(cons + cons_sum_1 + cons_sum_2)
 
