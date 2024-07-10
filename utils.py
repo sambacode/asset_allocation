@@ -67,6 +67,19 @@ def _calculate_parameters(
     return s_params
 
 
+def get_rebalance_dates(
+    date_index: pd.DatetimeIndex,
+    return_type: Literal["start", " end"] = "start",
+    frequency: Literal["D", "W", "M", "Q", "Y"] = "M",
+    n_periods: Optional[int] = 1,
+) -> list[pd.Timestamp]:
+    if return_type not in ["start", "end"]:
+        raise ValueError(f"Invalid return_type: {return_type}, must be 'end' or'start'")
+    grouper = date_index.to_series().groupby(date_index.to_period(frequency))
+    return_func = {"end": grouper.max, "start": grouper.min}
+    return return_func[return_type]()[::n_periods].tolist()
+
+
 def _filter_by_period(
     df: pd.DataFrame, period: str, drop_last_period: bool = True
 ) -> pd.DataFrame:

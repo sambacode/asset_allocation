@@ -5,10 +5,15 @@ from typing import Literal, Optional, Union
 
 import numpy as np
 import pandas as pd
-from utils import calculate_weights, get_available_trackers, load_trackers
+from utils import (
+    calculate_weights,
+    get_available_trackers,
+    load_trackers,
+    get_rebalance_dates,
+)
 
 from bwlogger import StyleAdapter, basic_setup
-from bwutils import TODAY, Date
+from bwutils import TODAY, Date, open_file
 
 logger = StyleAdapter(logging.getLogger(__name__))
 
@@ -66,7 +71,7 @@ FX_TRACKER_DICT = {
     "CZK": "JPFCTCZK Index",
     "HUF": "JPFCTHUF Index",
     "IDR": "JPFCTIDR Index",
-    "INR": "JPFCTINR Index",
+    # "INR": "JPFCTINR Index",
     "MXN": "JPFCTMXN Index",
     "MYR": "JPFCTMYR Index",
     "PEN": "JPFCTPEN Index",
@@ -92,19 +97,20 @@ def backtest(
         "IV",
     ] = "IV",
     rebal_wind: tuple[
-        Literal["D", "W", "M", "Q", "Y"], Union[int, Literal["start", "end"]]
-    ] = ("M", "start"),
+        Literal["start", "end"], Literal["D", "W", "M", "Q", "Y"], int
+    ] = ("start", "M", 1),
     tol_by_asset: Optional[float] = None,
     tol_agg: Optional[float] = None,
     return_period: tuple[Literal["D", "W", "M", "Q", "Y"], int] = ("D", 21),
     return_rolling: bool = True,
     cov_window: Literal["expanding", "rolling"] = "expanding",
     cov_estimate_wegihts: Optional[tuple[Literal["halflife", "alpha"], float]] = None,
+    clipboard: bool = True,
 ) -> pd.DataFrame:
     lists_msgs = (
         [
             f"Weights Method: {method_weights}",
-            f"Rebalacing Window: {rebal_wind[1]}_{rebal_wind[0]}",
+            "Rebalacing Window: %s" % "_".join(map(str, rebal_wind)),
         ]
         + ([f"Rebalacing Tolerance Asset: {tol_by_asset:.%}"] if tol_by_asset else [])
         + ([f"Rebalacing Tolerance Agg.: {tol_agg:.%}"] if tol_agg else [])
@@ -121,8 +127,10 @@ def backtest(
     )
     logger.info("Backtest Parameters: %s." % " | ".join(lists_msgs))
 
+    dates_rebalance = get_rebalance_dates(tracker_df.index, *rebal_wind)
+
     r_days: int = return_period[1]
-    MIN_DATA_POINTS = 252
+    MIN_DATA_POINTS = 252  # TODO: move into parameters
 
     backtest = pd.Series(index=tracker_df.index[MIN_DATA_POINTS + r_days :])
     start_backtest = backtest.index.min()
@@ -136,7 +144,7 @@ def backtest(
         .diff(r_days)[avaialbe_trackers]
         .dropna()
         .iloc[:MIN_DATA_POINTS]
-        .cov()
+        .cov()  # TODO: change covariance method
         * 252
         / r_days
     )
@@ -154,13 +162,15 @@ def backtest(
         pnl = ((tracker_df.loc[t] - tracker_df.loc[tm1]) * q).sum()
         backtest[t] = backtest[tm1] + pnl
 
-        if t.month != tm1.month:
+        if t in dates_rebalance:
             if tracker_df.loc[:t].shape[0] > 252:
                 avaialbe_trackers = get_available_trackers(
                     tracker_df.loc[:tm1], MIN_DATA_POINTS + r_days
                 )
                 cov = (
-                    np.log(tracker_df.loc[:tm1]).diff(r_days)[avaialbe_trackers].cov()
+                    np.log(tracker_df.loc[:tm1])
+                    .diff(r_days)[avaialbe_trackers]
+                    .cov()  # TODO: change covariance method
                     * 252
                     / r_days
                 )
@@ -186,7 +196,15 @@ def backtest(
         join="outer",
         sort=True,
     )
-
+    if clipboard:
+        backtest.to_clipboard(excel=True)
+    path_output = SCRIPT_DIR.joinpath("backtest.xlsx")
+    backtest.to_excel(
+        path_output,
+        index_label="Date",
+        sheet_name="Backtest",
+    )
+    open_file(path_output)
     return backtest
 
 
