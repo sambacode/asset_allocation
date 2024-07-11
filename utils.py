@@ -20,7 +20,7 @@ def calculate_weights(
     **kwargs,
 ) -> pd.DataFrame:
     if method == "IV":
-        vols = pd.Series(index=cov_matrix.index, data=np.diag(cov_matrix))
+        vols = pd.Series(index=cov_matrix.index, data=np.diag(cov_matrix))**0.5
         weights = (1 / vols) / (1 / vols).sum()
     elif method == "ERC":
         weights = optmize_risk_budget(cov_matrix, risk_contribution, **kwargs)

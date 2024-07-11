@@ -1,7 +1,7 @@
 import argparse
 import logging
 from pathlib import Path
-from typing import Literal, Optional, Union
+from typing import Literal, Optional
 
 import numpy as np
 import pandas as pd
@@ -11,6 +11,7 @@ from utils import (
     load_trackers,
     get_rebalance_dates,
 )
+from entities import FX_TRACKER_DICT
 
 from bwlogger import StyleAdapter, basic_setup
 from bwutils import TODAY, Date, open_file
@@ -19,78 +20,13 @@ logger = StyleAdapter(logging.getLogger(__name__))
 
 APPNAME = ""
 NAMESPACE = ""
+OUTPUT_FOLDER = Path("C:/Users/pcampos/OneDrive - Insper - Instituto de Ensino e Pesquisa/Dissertação Mestrado/Analysis")
 
-###############################################################################
-SCRIPT_DIR = Path(__file__).parent
-DEFAULT_FILE_PATH = SCRIPT_DIR.joinpath("BR CDS and FX.xlsx")
-DEFAULT_OUTPUT_PATH = SCRIPT_DIR.joinpath("testing.xlsx")
-
-COL_TIMEFRAME_NBR = "timeframe_nbr"
-COL_EXPECTED_RETURN_ACC = "expected_return_acc"
-COL_REALIZED_RETURN_ACC = "realized_return_acc"
-COL_OUTPERFORMANCE_RETURN_ACC = "outperformance_return_acc"
-COL_OUTPERFORMANCE_RETURN_LN_ACC = "outperformance_return_ln_acc"
-COL_OUTPERFORMANCE_RETURN_LN = "outperformance_return_ln"
-COL_RETURN_LN_ACC_STRATEGY = "return_ln_acc_strategy"
-COL_SIGNAL = "signal"
-
-ENDOG_COL = "BRL"
-EXOG_COLS = ["Brazil CDS"]
-N_MIN = 252
-
-# these are in ER in USD
-EM_CDS_TRACKER_DICT = {
-    "BRL": "GSCDBRBE Index",
-    "CNY": "GSCDCHBE Index",
-    "MXN": "GSCDMEBE Index",
-    "ZAR": "GSCDSOBE Index",
-}
-
-# these are in LOC ER with pnl converted to USD
-IRS_TRACKER_DICT = {
-    "BRL": "GSSWBRN5 Index",
-    "CNY": "GSSWCNN5 Index",
-    "MXN": "GSSWMXN5 Index",
-    "ZAR": "GSSWZAN5 Index",
-}
-
-EQ_TRACKER_DICT = {
-    "BRL": "BNPIFBR Index",  # in BRL
-    "CNY": "BNPIFCNO Index",  # China onshore but with pnl converted to USD
-    "ZAR": "BNPIFSA Index",  # in ZAR
-    # "MXN": "???? Index",
-}
-
-FX_TRACKER_DICT = {
-    "AED": "JPFCTAED Index",
-    "ARS": "JPFCTARS Index",
-    "BRL": "JPFCTBRL Index",
-    "CLP": "JPFCTCLP Index",
-    "CNY": "JPFCTCNY Index",
-    "COP": "JPFCTCOP Index",
-    "CZK": "JPFCTCZK Index",
-    "HUF": "JPFCTHUF Index",
-    "IDR": "JPFCTIDR Index",
-    # "INR": "JPFCTINR Index",
-    "MXN": "JPFCTMXN Index",
-    "MYR": "JPFCTMYR Index",
-    "PEN": "JPFCTPEN Index",
-    "PHP": "JPFCTPHP Index",
-    "PLN": "JPFCTPLN Index",
-    "RON": "JPFCTRON Index",
-    "RUB": "JPFCTRUB Index",
-    "SAR": "JPFCTSAR Index",
-    "THB": "JPFCTTHB Index",
-    "TRY": "JPFCTTRY Index",
-    "ZAR": "JPFCTZAR Index",
-}
 
 
 def backtest(
     tracker_df: pd.DataFrame,
     vol_target: float = 0.1,
-    dt_ini: Date = "1990-12-31",
-    dt_end: Date = TODAY,
     method_weights: Literal[
         "ERC",
         "HRC",
@@ -198,7 +134,7 @@ def backtest(
     )
     if clipboard:
         backtest.to_clipboard(excel=True)
-    path_output = SCRIPT_DIR.joinpath("backtest.xlsx")
+    path_output = OUTPUT_FOLDER.joinpath("backtest.xlsx")
     backtest.to_excel(
         path_output,
         index_label="Date",
@@ -212,7 +148,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     args = parser.parse_args()
 
-    basic_setup(APPNAME, False, SCRIPT_DIR, NAMESPACE)
+    basic_setup(APPNAME, False, OUTPUT_FOLDER, NAMESPACE)
     backtest(
         load_trackers(FX_TRACKER_DICT),
         method_weights="IV",
