@@ -1,5 +1,5 @@
 import logging
-from typing import Callable, Literal, Optional, Union
+from typing import Callable, Literal, Optional, Union, overload
 
 import numpy as np
 import pandas as pd
@@ -30,6 +30,16 @@ def calculate_weights(
         raise ValueError(f"method {method} not supported")
 
     return weights
+
+
+@overload
+def correlation_to_distance(corr: float) -> float: ...
+
+@overload
+def correlation_to_distance(corr: pd.DataFrame) -> pd.DataFrame: ...
+
+def correlation_to_distance(corr):
+    return np.sqrt(((1 - corr) / 2))
 
 
 def _exponentially_decaying_weights(
