@@ -14,14 +14,17 @@ from utils import (
 from entities import FX_TRACKER_DICT
 
 from bwlogger import StyleAdapter, basic_setup
-from bwutils import TODAY, Date, open_file
+from bwutils import open_file
+from portfolio.construction import calculate_weights as calculate_weights_fh
 
 logger = StyleAdapter(logging.getLogger(__name__))
 
 APPNAME = ""
 NAMESPACE = ""
-OUTPUT_FOLDER = Path("C:/Users/pcampos/OneDrive - Insper - Instituto de Ensino e Pesquisa/Dissertação Mestrado/Analysis")
-
+OUTPUT_FOLDER = Path(
+    "C:/Users/pcampos/OneDrive - Insper - Instituto de Ensino e Pesquisa"
+    "/Dissertação Mestrado/Analysis"
+)
 
 
 def backtest(
@@ -142,6 +145,70 @@ def backtest(
     )
     open_file(path_output)
     return backtest
+
+
+def backtest2(
+    tracker_df: pd.DataFrame,
+    vol_target: float = 0.2,
+    method_weights: Literal["hrp", "minvar", "ivp", "erc"] = "ivp",
+) -> pd.DataFrame:
+    STARTING_DATA_POINTS = 252 * 3
+    STARTING_DATA_POINTS = 1305
+    return_days = 21
+    min_data_points = 252
+    # min_data_points = 100
+
+    backtest = pd.Series(index=tracker_df.index[STARTING_DATA_POINTS + return_days :])
+    backtest.iloc[0] = 100.0
+
+    starting_trackers = get_available_trackers(
+        tracker_df.iloc[: STARTING_DATA_POINTS + return_days],
+        STARTING_DATA_POINTS,
+    )
+    cov = (
+        np.log(tracker_df)[starting_trackers].diff(return_days).cov()
+        * 252
+        / return_days
+    )
+    # print(starting_trackers)
+    w = calculate_weights(
+        np.log(tracker_df[starting_trackers]).diff(1), method=method_weights
+    )
+    # print(w.to_string())
+    adj_factor = vol_target / np.sqrt(w @ cov @ w)
+    w = adj_factor * w
+    q = backtest.iloc[0] * w / tracker_df.iloc[0]
+
+    for t, tm1 in zip(backtest.index[1:], backtest.index[:-1]):
+        pnl = ((tracker_df.loc[t] - tracker_df.loc[tm1]) * q).sum()
+        backtest[t] = backtest[tm1] + pnl
+        if t.month != tm1.month:
+            # print("Rebalance %s" % t.strftime("%m/%d/%Y"))
+            available_trackers = get_available_trackers(
+                tracker_df.loc[:t], min_data_points + return_days
+            )
+            # print("Available Trackers %s" % available_trackers)
+            cov = (
+                np.log(tracker_df.loc[:t][available_trackers]).diff(return_days).cov()
+                * 252
+                / return_days
+            )
+            w = calculate_weights_fh(
+                np.log(tracker_df.loc[:t][available_trackers]).diff(1),
+                method=method_weights,
+            )
+            # print(w.to_string())
+            adj_factor = vol_target / np.sqrt(w @ cov @ w)
+            w = adj_factor * w
+            q = backtest[tm1] * w / tracker_df.loc[tm1]
+
+    df_backtest = pd.concat(
+        [tracker_df, backtest.to_frame("assets")],
+        axis=1,
+        join="outer",
+        sort=True,
+    )
+    return df_backtest
 
 
 if __name__ == "__main__":
