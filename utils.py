@@ -13,6 +13,20 @@ from bwutils import TODAY, Date
 logger = StyleAdapter(logging.getLogger(__name__))
 
 
+def cap_long_only_weights(
+    w: pd.Series,
+    cap: Optional[float] = None,
+) -> pd.Series:
+    filt = ~w.isna()
+    filt = w > cap
+    w.loc[filt] = cap
+    w.loc[~filt] = w.loc[~filt] * (1 - w.loc[filt].sum()) / w.loc[~filt].sum()
+    if (w > cap).any():
+        return cap_long_only_weights(w, cap=cap)
+    else:
+        return w
+
+
 def calculate_weights(
     method: Literal["IV", "ERC", "HRC"],
     cov_matrix: pd.DataFrame,
@@ -33,10 +47,14 @@ def calculate_weights(
 
 
 @overload
-def correlation_to_distance(corr: float) -> float: ...
+def correlation_to_distance(corr: float) -> float:
+    ...
+
 
 @overload
-def correlation_to_distance(corr: pd.DataFrame) -> pd.DataFrame: ...
+def correlation_to_distance(corr: pd.DataFrame) -> pd.DataFrame:
+    ...
+
 
 def correlation_to_distance(corr):
     return np.sqrt(((1 - corr) / 2))
