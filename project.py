@@ -194,18 +194,22 @@ def backtest2(
 
 list_backtest = []
 list_positions = []
-methods_wegiths = ["ivp"]
+methods_wegiths = [
+    "hrp", 
+    # "minvar",
+    "ivp", 
+    "erc"
+]
 for method_weights in methods_wegiths:
     for cap in [n / 10 for n in range(7, 1, -1)]:
-            df_backtest, df_positions = backtest2(
-                df_trackers, method_weights=method_weights, cap=cap
-            )
-            list_backtest.append(df_backtest.iloc[:, -1].copy())
-            list_positions.append(df_positions.copy())
+        df_backtest, df_positions = backtest2(
+            df_trackers, method_weights=method_weights, cap=cap
+        )
+        list_backtest.append(df_backtest.iloc[:, -1].copy())
+        list_positions.append(df_positions.copy())
 
 df_backtest = pd.concat(
-    df_trackers,
-    list_backtest,
+    [df_trackers, *list_backtest],
     axis=1,
 )
 df_backtest.to_excel(OUTPUT_FOLDER.joinpath("backtest.xlsx"))
