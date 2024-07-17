@@ -17,8 +17,7 @@ def cap_long_only_weights(
     w: pd.Series,
     cap: Optional[float] = None,
 ) -> pd.Series:
-    filt = ~w.isna()
-    filt = w > cap
+    filt = w >= cap
     w.loc[filt] = cap
     w.loc[~filt] = w.loc[~filt] * (1 - w.loc[filt].sum()) / w.loc[~filt].sum()
     if (w > cap).any():
