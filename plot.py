@@ -235,3 +235,99 @@ def stacked_bar_plot(
 
     plt.show()
     return
+
+
+def _add_gradient(
+    ax,
+    s_data,
+    color,
+    data_min,
+    data_max,
+    inverted: bool = False,
+):
+    percentil_default_max = 0.2
+    percentil_default_min = 0
+    percentil_min = percentil_default_min if not inverted else percentil_default_max
+    percentil_max = 1 - percentil_default_max if not inverted else 1
+    grad1 = ax.imshow(
+        np.linspace(0, 1, 256).reshape(-1, 1),
+        cmap=sns.light_palette(color, reverse=inverted, as_cmap=True),
+        vmax=_area_percentil_to_y_norm(s_data, percentil_max),
+        vmin=_area_percentil_to_y_norm(s_data, percentil_min),
+        norm="symlog",
+        aspect="auto",
+        extent=[
+            s_data.index.min(),
+            s_data.index.max(),
+            data_min,
+            data_max,
+        ],
+        origin="lower",
+        alpha=0.7,
+        zorder=1.5,
+    )
+    poly_pos = ax.fill_between(s_data.index, s_data, 0)
+    grad1.set_clip_path(poly_pos.get_paths()[0], transform=ax.transData)
+    poly_pos.remove()
+
+
+def line_plot(
+    s_data: pd.Series,
+    title_font_size: Optional[float] = None,
+    font_family: Optional[float] = "Calibri",
+    font_size: Optional[float] = 10,
+    figure_size: Optional[tuple[float, tuple]] = (8.5, 4.5),
+    color: Optional[tuple[float, float, float]] = "black",
+    xaxis_title: Optional[str] = None,
+    y_max: Optional[float] = None,
+    y_min: Optional[float] = None,
+    inverted: bool = False,
+    plot_title: Optional[str] = None,
+    add_gradient: Optional[bool] = True,
+    output_path: Optional[Path] = None,
+) -> None:
+    plt.rcParams["font.family"] = font_family
+    fig, ax = plt.subplots(figsize=figure_size)
+
+    s_data.plot(ax=ax, color=color)
+
+    ax.grid(True, which="both", color="gray", linestyle=":", linewidth=0.5, zorder=2.5)
+    ax.yaxis.set_major_formatter(FuncFormatter(_format_percentage))
+    ax.yaxis.tick_right()
+    ax.yaxis.set_label_position("right")
+
+    if xaxis_title:
+        ax.set_xlabel(xaxis_title, fontsize=font_size)
+
+    if s_data.name:
+        plot_title = plot_title or s_data.name
+    if plot_title:
+        ax.set_title(
+            plot_title,
+            fontsize=title_font_size or 1.2 * font_size,
+        )
+
+    ax.tick_params(axis="both", which="major", labelsize=font_size)
+    y_min = y_min if y_min is not None else ax.get_ylim()[0]
+    y_max = y_max if y_max is not None else ax.get_ylim()[1]
+    ax.set_ylim(y_min, y_max)
+
+    if add_gradient:
+        data_min = 0 if y_min == 0 else s_data.min()
+        data_max = 0 if y_max == 0 else s_data.max()
+        _add_gradient(ax, s_data, color, data_min, data_max, inverted=inverted)
+
+    ax.set_ylim(y_min, y_max)
+
+    if output_path:
+        fig.savefig(output_path, bbox_inches="tight", format="svg")
+
+    plt.show()
+    return
+
+
+def _area_percentil_to_y_norm(s_data: pd.Series, percentil: float) -> float:
+    acc_pct = (s_data.sort_values() / s_data.sum()).cumsum()
+    percentil_index = (acc_pct - percentil).abs().idxmin()
+    percentil_value = s_data[percentil_index]
+    return (percentil_value - s_data.min()) / (s_data.max() - s_data.min())
