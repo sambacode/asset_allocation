@@ -1,7 +1,7 @@
 EM_CDS_TRACKER_DICT = {
-    "AED": "GSCDABBE Index",
+    # "AED": "GSCDABBE Index", # no FX Tracker
     "ARS": "GSCDARBE Index",
-    "Brazil": "GSCDBRBE Index",
+    "BRL": "GSCDBRBE Index",
     "CLP": "GSCDCLBE Index",
     "CNY": "GSCDCHBE Index",
     "COP": "GSCDCOBE Index",
@@ -17,7 +17,7 @@ EM_CDS_TRACKER_DICT = {
     "ZAR": "GSCDSOBE Index",
     "TRY": "GSCDTUBE Index",
     "UAH": "GSCDUKBE Index",
-    "CDX EM": "EREM5LD5 Index",
+    # "CDX EM": "EREM5LD5 Index", # no FX Tracker
 }
 
 
@@ -34,32 +34,52 @@ EQ_TRACKER_DICT = {
     "ZAR": "BNPIFSA Index",  # in ZAR
     # "MXN": "???? Index",
 }
-
+fx_trackers_aa = [
+    "BRL",
+    "CLP",
+    "CNH",
+    "CNY",
+    "CZK",
+    "HUF",
+    "IDR",
+    "INR",
+    "MXN",
+    "PLN",
+    "RUB",
+    "SEK",
+    "SGD",
+    "TRY",
+    "TWD",
+    "ZAR",
+    "THB",
+    "COP",
+    "MYR",
+    "HKD",
+]
 FX_TRACKER_DICT = {
-    "AED": "JPFCTAED Index",
     "ARS": "JPFCTARS Index",
     "BRL": "JPFCTBRL Index",
     "CLP": "JPFCTCLP Index",
     "CNY": "JPFCTCNY Index",
     "COP": "JPFCTCOP Index",
-    "CZK": "JPFCTCZK Index",
-    "HUF": "JPFCTHUF Index",
+    # "CZK": "JPFCTCZK Index",  # no CDS tracker
+    # "HUF": "JPFCTHUF Index",  # no CDS tracker
     "IDR": "JPFCTIDR Index",
-    "INR": "JPFCTINR Index",
+    # "INR": "JPFCTINR Index",  # no CDS tracker
     "MXN": "JPFCTMXN Index",
     "MYR": "JPFCTMYR Index",
-    "PAB": "JPFCTPAB Index",  # pegged to dollar?
+    # "PAB": "JPFCTPAB Index",  # pegged to dollar?
     "PEN": "JPFCTPEN Index",
     "PHP": "JPFCTPHP Index",
-    "PLN": "JPFCTPLN Index",
+    # "PLN": "JPFCTPLN Index", # no CDS tracker
     "QAR": "JPFCTQAR Index",
-    "RON": "JPFCTRON Index",
+    # "RON": "JPFCTRON Index",  # no CDS tracker
     "RUB": "JPFCTRUB Index",
-    "SAR": "JPFCTSAR Index",
-    "SGD": "JPFCTSGD Index",
-    "THB": "JPFCTTHB Index",
+    # "SAR": "JPFCTSAR Index",  # pegged to dollar?
+    # "SGD": "JPFCTSGD Index",  # no CDS tracker
+    # "THB": "JPFCTTHB Index",  # no CDS tracker
     "TRY": "JPFCTTRY Index",
-    "TWD": "JPFCTTWD Index",
+    # "TWD": "JPFCTTWD Index",  # no CDS tracker
     "UAH": "JPFCTUAH Index",
     "ZAR": "JPFCTZAR Index",
 }

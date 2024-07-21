@@ -12,7 +12,7 @@ from utils import (
     get_rebalance_dates,
     cap_long_only_weights,
 )
-from entities import FX_TRACKER_DICT
+from entities import FX_TRACKER_DICT, EM_CDS_TRACKER_DICT
 
 from bwlogger import StyleAdapter, basic_setup
 from bwutils import open_file
@@ -214,15 +214,23 @@ def backtest2(
     df_positions = pd.DataFrame(dict_positions).T
     return df_backtest.copy(), df_positions.copy()
 
+def main():
+    s_cdx_em = load_trackers({"CDX EM": "EREM5LD5 Index"})
+    s_fx_bench = backtest2(
+        load_trackers(FX_TRACKER_DICT), method_weights="ivp", cap=1 / 3
+    )[0]["assets"]
+    # df_backtest.to_excel(
+    #     OUTPUT_FOLDER.joinpath("portfolio_currencies.xlsx"), index_label="Date"
+    # )
+    s_cds_bench = backtest2(
+        load_trackers(EM_CDS_TRACKER_DICT), method_weights="ivp", cap=1 / 3
+    )[0]["assets"]
+    return
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     args = parser.parse_args()
 
     basic_setup(APPNAME, False, OUTPUT_FOLDER, NAMESPACE)
-    df_backtest, df_positions = backtest2(
-        load_trackers(FX_TRACKER_DICT),
-        method_weights="ivp",
-        cap=1/3
-    )
-    df_backtest.to_excel(OUTPUT_FOLDER.joinpath("portfolio_currencies.xlsx"), index_label="Date")
+    main()
