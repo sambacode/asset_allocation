@@ -5,18 +5,18 @@ from typing import Literal, Optional
 
 import numpy as np
 import pandas as pd
+from entities import EM_CDS_TRACKER_DICT, FX_TRACKER_DICT
+from portfolio.construction import calculate_weights as calculate_weights_fh
 from utils import (
     calculate_weights,
-    get_available_trackers,
-    load_trackers,
-    get_rebalance_dates,
     cap_long_only_weights,
+    get_available_trackers,
+    get_rebalance_dates,
+    load_trackers,
 )
-from entities import FX_TRACKER_DICT, EM_CDS_TRACKER_DICT
 
 from bwlogger import StyleAdapter, basic_setup
 from bwutils import open_file
-from portfolio.construction import calculate_weights as calculate_weights_fh
 
 logger = StyleAdapter(logging.getLogger(__name__))
 
@@ -153,32 +153,33 @@ def backtest2(
     vol_target: float = 0.2,
     method_weights: Literal["hrp", "minvar", "ivp", "erc"] = "ivp",
     cap: Optional[float] = None,
+    min_data_points: Optional[int] = 252 * 3,
+    return_days: Optional[int] = 21,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    STARTING_DATA_POINTS = 252 * 3
-    return_days = 21
-    min_data_points = 252
-
-    backtest = pd.Series(index=tracker_df.index[STARTING_DATA_POINTS + return_days :])
+    backtest = pd.Series(index=tracker_df.index[min_data_points + return_days :])
     backtest.iloc[0] = 100.0
 
     starting_trackers = get_available_trackers(
-        tracker_df.iloc[: STARTING_DATA_POINTS + return_days],
-        STARTING_DATA_POINTS,
+        tracker_df.iloc[: min_data_points + return_days],
+        min_data_points,
     )
-    cov = (
-        np.log(tracker_df)[starting_trackers].diff(return_days).cov()
-        * 252
-        / return_days
+    df_returns_start = (
+        np.log(tracker_df)[starting_trackers]
+        .diff(return_days)
+        .dropna()
+        .iloc[:min_data_points]
     )
+    cov = df_returns_start.cov() * 252 / return_days
     w = calculate_weights_fh(
-        np.log(tracker_df[starting_trackers]).diff(1),
+        df_returns_start,
         method=method_weights,
         long_only=True,
+        use_std=True,
     )
     w = cap_long_only_weights(w, cap=cap)
     adj_factor = vol_target / np.sqrt(w @ cov @ w)
     w = adj_factor * w
-    q = backtest.iloc[0] * w / tracker_df.iloc[0]
+    q = backtest.iloc[0] * w / tracker_df.loc[backtest.index[0]]
     dict_positions = {}
     dict_positions[backtest.index[0]] = q.to_dict()
 
@@ -188,17 +189,17 @@ def backtest2(
         backtest[t] = backtest[tm1] + pnl
         if t.month != tm1.month:
             available_trackers = get_available_trackers(
-                tracker_df.loc[:t], min_data_points + return_days
+                tracker_df.loc[:tm1], min_data_points + return_days
             )
-            cov = (
-                np.log(tracker_df.loc[:t][available_trackers]).diff(return_days).cov()
-                * 252
-                / return_days
+            df_returns = np.log(tracker_df.loc[:tm1][available_trackers]).diff(
+                return_days
             )
+            cov = df_returns.cov() * 252 / return_days
             w = calculate_weights_fh(
-                np.log(tracker_df.loc[:t][available_trackers]).diff(1),
+                df_returns,
                 method=method_weights,
                 long_only=True,
+                use_std=True,
             )
             w = cap_long_only_weights(w, cap=cap)
             adj_factor = vol_target / np.sqrt(w @ cov @ w)
@@ -213,6 +214,7 @@ def backtest2(
     )
     df_positions = pd.DataFrame(dict_positions).T
     return df_backtest.copy(), df_positions.copy()
+
 
 def main():
     s_cdx_em = load_trackers({"CDX EM": "EREM5LD5 Index"})
