@@ -157,6 +157,9 @@ def backtest2(
     return_days: Optional[int] = 21,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     backtest = pd.Series(index=tracker_df.index[min_data_points + return_days :])
+    start_index = backtest.index[0]
+    backtest_w = pd.Series(index=tracker_df.index[min_data_points + return_days :])
+    backtest_q = pd.Series(index=tracker_df.index[min_data_points + return_days :])
     backtest.iloc[0] = 100.0
 
     starting_trackers = get_available_trackers(
@@ -179,9 +182,11 @@ def backtest2(
     w = cap_long_only_weights(w, cap=cap)
     adj_factor = vol_target / np.sqrt(w @ cov @ w)
     w = adj_factor * w
-    q = backtest.iloc[0] * w / tracker_df.loc[backtest.index[0]]
+    q = backtest.iloc[0] * w / tracker_df.loc[start_index]
+    backtest_w[start_index] = w.to_dict()
+    backtest_q[start_index] = q.to_dict()
     dict_positions = {}
-    dict_positions[backtest.index[0]] = q.to_dict()
+    dict_positions[start_index] = q.to_dict()
 
     for t, tm1 in zip(backtest.index[1:], backtest.index[:-1]):
         pnl = ((tracker_df.loc[t] - tracker_df.loc[tm1]) * q).sum()
@@ -204,10 +209,19 @@ def backtest2(
             w = cap_long_only_weights(w, cap=cap)
             adj_factor = vol_target / np.sqrt(w @ cov @ w)
             w = adj_factor * w
-            q = backtest[tm1] * w / tracker_df.loc[tm1]
+            q = (
+                backtest[tm1] * w / tracker_df.loc[tm1]
+            )  # rebalance on First day of month
+        backtest_w[t] = w.to_dict()
+        backtest_q[t] = q.to_dict()
 
     df_backtest = pd.concat(
-        [tracker_df, backtest.to_frame("assets")],
+        [
+            tracker_df,
+            backtest.to_frame("assets"),
+            pd.DataFrame(backtest_w.to_dict()).T.rename(columns=lambda col: col + "_w"),
+            pd.DataFrame(backtest_q.to_dict()).T.rename(columns=lambda col: col + "_q"),
+        ],
         axis=1,
         join="outer",
         sort=True,
@@ -217,16 +231,23 @@ def backtest2(
 
 
 def main():
-    s_cdx_em = load_trackers({"CDX EM": "EREM5LD5 Index"})
-    s_fx_bench = backtest2(
-        load_trackers(FX_TRACKER_DICT), method_weights="ivp", cap=1 / 3
-    )[0]["assets"]
-    # df_backtest.to_excel(
-    #     OUTPUT_FOLDER.joinpath("portfolio_currencies.xlsx"), index_label="Date"
-    # )
-    s_cds_bench = backtest2(
-        load_trackers(EM_CDS_TRACKER_DICT), method_weights="ivp", cap=1 / 3
-    )[0]["assets"]
+    df_fx = load_trackers(FX_TRACKER_DICT)
+    df_cds = load_trackers(EM_CDS_TRACKER_DICT)
+    new_index = df_fx.index.union(df_cds.index).sort_values()
+    df_fx = df_fx.reindex(index=new_index, method="ffill").dropna(how="all")
+    df_cds = df_cds.reindex(index=new_index, method="ffill").dropna(how="all")
+    ccy = "BRL"
+    s_fx = df_fx[ccy].copy().dropna()
+    s_fx.name = s_fx.name + "_fx"
+    s_cds = df_cds[ccy].copy().dropna()  # long CDS(sell protection)
+    s_cds.name = s_cds.name + "_cds"
+    s_fx = s_fx.loc[s_cds.index.min() :]
+    s_fx = s_fx.iloc[0] / s_fx * 100
+
+    df_long_short = pd.concat([s_fx, s_cds], axis=1, join="inner").dropna()
+    backtest_teste, position_teste = backtest2(
+        df_long_short, method_weights="ivp", vol_target=0.1
+    )
     return
 
 
