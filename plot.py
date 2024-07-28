@@ -172,7 +172,7 @@ def scatter_plot(
     return
 
 
-def stacked_bar_plot(
+def stacked_area_plot(
     df_weights: pd.Series,
     title_font_size: Optional[float] = None,
     font_family: Optional[float] = "Calibri",
