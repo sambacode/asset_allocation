@@ -172,6 +172,68 @@ def scatter_plot(
     return
 
 
+def lines_plot(
+    df_weights: pd.Series,
+    plot_title: Optional[str],
+    title_font_size: Optional[float] = None,
+    font_family: Optional[float] = "Calibri",
+    font_size: Optional[float] = 10,
+    figure_size: Optional[tuple[float, tuple]] = (8.5, 4.5),
+    color_list: Optional[list[tuple[float, float, float]]] = None,
+    output_path: Optional[Path] = None,
+) -> None:
+    DEFAULT_TITLE_SCATTER_PLOT = "% of Total Allocation"
+
+    df = df_weights.copy()
+    df = df[df.mean().sort_values(ascending=False).index].dropna(how="all")
+    plt.rcParams["font.family"] = font_family
+    fig, ax = plt.subplots(figsize=figure_size)
+
+    color_list = color_list or sns.color_palette("tab20")
+
+    df.plot(ax=ax, alpha=0.7, color=color_list)
+
+    ax.grid(True, which="both", color="gray", linestyle=":", linewidth=0.5, zorder=2.5)
+    ax.yaxis.set_major_formatter(FuncFormatter(_format_percentage))
+    ax.yaxis.tick_right()
+    ax.yaxis.set_label_position("right")
+
+    ax.set_xlabel(None, fontsize=font_size)
+
+    plot_title = plot_title or DEFAULT_TITLE_SCATTER_PLOT
+
+    ax.tick_params(axis="both", which="major", labelsize=font_size)
+
+    legend = ax.legend(
+        loc="lower center",
+        bbox_to_anchor=(0.52, 1),
+        ncol=5,
+        fontsize=8,
+        frameon=False,
+    )
+
+    fig.canvas.draw()
+    legend_box = legend.get_window_extent()
+    legend_coords = legend_box.transformed(ax.transAxes.inverted())
+
+    fig.text(
+        0.5,
+        legend_coords.y0 - 0.03,
+        plot_title,
+        ha="center",
+        va="bottom",
+        fontsize=title_font_size or 1.2 * font_size,
+        fontfamily=font_family,
+    )
+
+    plt.subplots_adjust(top=0.85)
+    if output_path:
+        fig.savefig(output_path, bbox_inches="tight", format="svg")
+
+    plt.show()
+    return
+
+
 def stacked_area_plot(
     df_weights: pd.Series,
     title_font_size: Optional[float] = None,
