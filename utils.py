@@ -243,3 +243,83 @@ def load_trackers(
     tracker_df.columns = tracker_df.columns.droplevel(0)
     tracker_df = tracker_df.rename(columns=inverse_mapper_ticker)
     return tracker_df
+
+
+def _signal_to_rank(signal: pd.Series) -> pd.Series:
+    assert not signal.isna().any(), "NaN value in signal"
+    rank = signal.rank()
+    weight = rank - rank.sum() / rank.count()
+    scale = 2 / weight.abs().sum()
+    return weight * scale
+
+
+def _weights_tsmom(returns: pd.Series, vol: pd.Series, **_) -> pd.Series:
+    return np.sign(returns) * 1 / vol / (1 / vol).sum()
+
+
+def _weights_xsmom(returns: pd.Series, **_) -> pd.Series:
+    return _signal_to_rank(returns)
+
+
+def _weights_value_ppp(ppp: pd.Series, **_) -> pd.Series:
+    return _signal_to_rank(ppp)
+
+
+def _weights_value_alpha(alpha: pd.Series, **_) -> pd.Series:
+    return _signal_to_rank(alpha)
+
+
+WEGIHTS: dict[str, Callable] = {
+    "tsmom": _weights_tsmom,
+    "value_alpha": _weights_value_alpha,
+    "value_ppp": _weights_value_ppp,
+    "xsmom": _weights_xsmom,
+}
+
+
+@overload
+def calculate_factor_weight(
+    factor: Literal["tsmom"],
+    *,
+    returns: pd.Series,
+    vol: pd.Series,
+    **_,
+) -> pd.Series: ...
+
+
+@overload
+def calculate_factor_weight(
+    factor: Literal["value_alpha"],
+    *,
+    alpha: pd.Series,
+    **_,
+) -> pd.Series: ...
+
+
+@overload
+def calculate_factor_weight(
+    factor: Literal["value_ppp"],
+    *,
+    ppp: pd.Series,
+    **_,
+) -> pd.Series: ...
+
+
+@overload
+def calculate_factor_weight(
+    factor: Literal["xsmom"],
+    *,
+    returns: pd.Series,
+    **_,
+) -> pd.Series: ...
+
+
+def calculate_factor_weight(
+    factor: Literal["tsmom", "value_alpha", "value_ppp", "xsmom"], **kwargs
+) -> pd.Series:
+    if (operator := WEGIHTS.get(factor)) is None:
+        raise ValueError(
+            f"Unknown data: '{factor}'. "
+            f"Must be one of: {', '.join(WEGIHTS)}."
+        )
+    return operator(**kwargs)
