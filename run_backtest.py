@@ -9,10 +9,11 @@ logging.getLogger(__name__)
 df_fx = load_trackers(FX_TRACKER_DICT)
 bt = Backtest()
 
-s_backtest = bt.run(
-    tracker_df=df_fx.dropna(axis=1),
+data = bt.run(
+    tracker_df=df_fx,
     weight_method="iv",
     cov_method="expanding",
     vol_target=0.1,
+    details=True
 )
-s_backtest.plot()
+data.to_excel("backtest.xlsx")
