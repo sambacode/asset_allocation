@@ -1,14 +1,13 @@
 import logging
-from typing import Callable, Literal, Optional, Union, overload
+from typing import Any, Callable, Literal, Optional, Union, overload
 
 import numpy as np
 import pandas as pd
 import statsmodels.api as sm
-from scipy.optimize import minimize
-
 from bwbbgdl import GoGet
 from bwlogger import StyleAdapter
 from bwutils import TODAY, Date
+from scipy.optimize import minimize
 
 logger = StyleAdapter(logging.getLogger(__name__))
 
@@ -46,13 +45,11 @@ def calculate_weights(
 
 
 @overload
-def correlation_to_distance(corr: float) -> float:
-    ...
+def correlation_to_distance(corr: float) -> float: ...
 
 
 @overload
-def correlation_to_distance(corr: pd.DataFrame) -> pd.DataFrame:
-    ...
+def correlation_to_distance(corr: pd.DataFrame) -> pd.DataFrame: ...
 
 
 def correlation_to_distance(corr):
@@ -217,7 +214,7 @@ def check_weights_in_tolerance(
     return cond1 and cond2
 
 
-def get_available_trackers(df: pd.DataFrame, min_data_points: int = 100) -> None:
+def get_available_trackers(df: pd.DataFrame, min_data_points: int = 100) -> pd.Index:
     s_data_points = (~df.isna()).sum()
     filt = s_data_points >= min_data_points
     return s_data_points[filt].index
@@ -319,7 +316,107 @@ def calculate_factor_weight(
 ) -> pd.Series:
     if (operator := WEGIHTS.get(factor)) is None:
         raise ValueError(
-            f"Unknown data: '{factor}'. "
-            f"Must be one of: {', '.join(WEGIHTS)}."
+            f"Unknown data: '{factor}'. " f"Must be one of: {', '.join(WEGIHTS)}."
         )
     return operator(**kwargs)
+
+
+def inv_vol(vols: pd.Series) -> pd.Series:
+    return (1 / vols) / (1 / vols).sum()
+
+
+def equal_weight(vols: pd.Series, **_) -> pd.Series:
+    return (vols * 0 + 1) / vols.count()
+
+
+def calc_weight(method: Literal["iv", "ew"], vols: pd.Series) -> pd.Series:
+    if method == "iv":
+        return inv_vol(vols)
+    elif method == "ew":
+        return equal_weight(vols)
+    else:
+        raise NotImplementedError("weight method not implemented")
+
+
+def cov_to_vols(df_vols: pd.DataFrame) -> pd.Series:
+    return pd.Series(index=df_vols.index, data=np.sqrt(np.diag(df_vols)))
+
+
+def calc_covariance(
+    df: pd.DataFrame, method: Literal["rolling", "expanding", "ewm"], **kwargs
+):
+    DEFAULT_PARAM = {"rolling": {"window": 252}, "ewm": {"halflife": 63}}
+    params = kwargs | DEFAULT_PARAM.get(method, {})
+    return df.__getattr__(method)(**params).cov().loc[df.index[-1]]
+
+
+class Backtest:
+    min_data_points = 252 * 3
+    r_wind = 21
+
+    def __init__(
+        self, r_wind: Optional[int] = None, min_data_points: Optional[int] = None
+    ):
+        self.r_wind = r_wind or self.r_wind
+        self.min_data_points = r_wind or self.min_data_points
+
+    def run(
+        self,
+        tracker_df: pd.DataFrame,
+        weight_method: Literal["iv", "ew"],
+        cov_method: Literal["rolling", "expanding", "ewm"],
+        vol_target: float = 0.1,
+        cov_params: dict[str, Any] = {},
+    ) -> pd.DataFrame:
+
+        df_return = np.log(tracker_df).diff(self.r_wind).dropna(how="all")
+        backtest = pd.Series(index=df_return.iloc[self.min_data_points :].index)
+        backtest.iloc[0] = 100.0
+
+        avaialbe_trackers = get_available_trackers(
+            df_return.iloc[: self.min_data_points],
+            self.min_data_points,
+        )
+        cov = (
+            calc_covariance(df_return[avaialbe_trackers], cov_method, **cov_params)
+            * 252
+            / self.r_wind
+        )
+        vols = cov_to_vols(cov)
+
+        w = calc_weight(weight_method, vols)
+        adj_factor = vol_target / np.sqrt(w @ cov @ w)
+        w = adj_factor * w
+
+        pos_open = backtest.iloc[0] * w
+
+        for t, tm1 in zip(backtest.index[1:], backtest.index[:-1]):
+            pos_close = ((tracker_df.loc[t] / tracker_df.loc[tm1])) * pos_open
+            pnl = (pos_close - pos_open).sum()
+            backtest[t] = backtest[tm1] + pnl
+
+            # overnight
+            pos_open = pos_close
+            if t.month != tm1.month:  # Rebalance on 1st BD
+                if tracker_df.loc[:t].shape[0] > 252:
+                    avaialbe_trackers = get_available_trackers(
+                        df_return.loc[:tm1],
+                        self.min_data_points,
+                    )
+                    cov = (
+                        calc_covariance(
+                            df_return.loc[:tm1, avaialbe_trackers],
+                            cov_method,
+                            **cov_params,
+                        )
+                        * 252
+                        / self.r_wind
+                    )
+                    vols = cov_to_vols(cov)
+
+                w = calc_weight(weight_method, vols)
+                adj_factor = vol_target / np.sqrt(w @ cov @ w)
+                w = adj_factor * w
+                pos_open = backtest[tm1] * w
+
+        return backtest
