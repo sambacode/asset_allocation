@@ -1,6 +1,6 @@
 import logging
 from typing import Any, Callable, Literal, Optional, Union, overload
-
+import inspect
 import numpy as np
 import pandas as pd
 import statsmodels.api as sm
@@ -350,6 +350,19 @@ def calc_covariance(
     return df.__getattr__(method)(**params).cov().loc[df.index[-1]]
 
 
+DataType = tuple[
+    pd.DataFrame,
+    pd.DataFrame,
+    pd.Timestamp,
+    pd.Timestamp,
+    pd.Series,
+    pd.DataFrame,
+    pd.DataFrame,
+    pd.Series,
+    pd.DataFrame,
+]
+
+
 class Backtest:
     min_data_points = 252 * 3
     r_wind = 21
@@ -360,9 +373,57 @@ class Backtest:
         self.r_wind = r_wind or self.r_wind
         self.min_data_points = r_wind or self.min_data_points
 
+    def _prepare_data(self, trackers: pd.DataFrame) -> DataType:
+        trackers = trackers.fillna(method="ffill").copy()
+        log_returns = np.log(trackers).diff(self.r_wind).dropna(how="all")
+        t_0, t_1 = log_returns.iloc[self.min_data_points :].index[:2]
+        backtest = pd.Series(index=log_returns[t_0:].index, dtype="float64")
+        pos_open = pd.DataFrame(
+            index=log_returns[t_1:].index,
+            columns=log_returns.columns,
+            dtype="float64",
+        )
+        pos_close = pd.DataFrame(
+            index=log_returns[t_0:].index,
+            columns=log_returns.columns,
+            dtype="float64",
+        )
+        pnl = pd.Series(index=log_returns[t_1:].index, dtype="float64")
+        weights = pd.DataFrame(
+            index=log_returns[t_0:].index,
+            columns=log_returns.columns,
+            dtype="float64",
+        )
+        return (
+            trackers,
+            log_returns,
+            t_0,
+            t_1,
+            backtest,
+            pos_open,
+            pos_close,
+            pnl,
+            weights,
+        )
+
+    @staticmethod
+    def concatenate_output(*database) -> pd.DataFrame:
+        assert map(lambda data: isinstance(data, (pd.Series,)), database)
+        caller_locals = inspect.currentframe().f_back.f_locals
+        variable_names = {id(v): k for k, v in caller_locals.items()}
+        dataframes = [
+            (
+                data.rename(columns=lambda col: f"{col}_{variable_names[id(data)]}")
+                if isinstance(data, pd.DataFrame)
+                else data.to_frame(variable_names[id(data)])
+            )
+            for data in database
+        ]
+        return pd.concat(dataframes, axis=1, sort=True)
+
     def run(
         self,
-        tracker_df: pd.DataFrame,
+        trackers: pd.DataFrame,
         weight_method: Literal["iv", "ew"],
         cov_method: Literal["rolling", "expanding", "ewm"],
         vol_target: float = 0.1,
@@ -370,90 +431,68 @@ class Backtest:
         details: Optional[bool] = True,
     ) -> Union[pd.DataFrame, pd.Series]:
 
-        df_log_return = np.log(tracker_df).diff(self.r_wind).dropna(how="all")
-        t_0, t_1 = df_log_return.iloc[self.min_data_points :].index[:2]
-        backtest = pd.Series(index=df_log_return[t_0:].index, dtype="float64")
-        pos_open = pd.DataFrame(
-            index=df_log_return[t_1:].index,
-            columns=df_log_return.columns,
-            dtype="float64",
-        )
-        pos_close = pd.DataFrame(
-            index=df_log_return[t_0:].index,
-            columns=df_log_return.columns,
-            dtype="float64",
-        )
-        pnl = pd.Series(index=df_log_return[t_1:].index, dtype="float64")
-        weights = pd.DataFrame(
-            index=df_log_return[t_0:].index,
-            columns=df_log_return.columns,
-            dtype="float64",
-        )
+        # Prepare Data
+        __series: DataType = self._prepare_data(trackers)
+        trackers: pd.DataFrame = __series[0]
+        log_returns: pd.DataFrame = __series[1]
+        t_0: pd.Timestamp = __series[2]
+        t_1: pd.Timestamp = __series[3]
+        backtest: pd.Series = __series[4]
+        pos_open: pd.DataFrame = __series[5]
+        pos_close: pd.DataFrame = __series[6]
+        pnl: pd.Series = __series[7]
+        weights: pd.DataFrame = __series[8]
 
+        # First Setup
         avaialbe_trackers = get_available_trackers(
-            df_log_return.iloc[: self.min_data_points],
+            log_returns.iloc[: self.min_data_points],
             self.min_data_points,
         )
         cov = (
-            calc_covariance(df_log_return[avaialbe_trackers], cov_method, **cov_params)
+            calc_covariance(log_returns[avaialbe_trackers], cov_method, **cov_params)
             * 252
             / self.r_wind
         )
         vols = cov_to_vols(cov)
-
         w_ = calc_weight(weight_method, vols).copy()
         adj_factor = vol_target / np.sqrt(w_ @ cov @ w_).copy()
         weights.loc[t_0] = adj_factor * w_.copy()
 
         backtest[t_0] = 100.0
         pos_close.loc[t_0] = backtest[t_0] * weights.loc[t_0].copy()
-        # pos_open.loc[t_1] = pos_close.loc[t_0]
 
+        # Simulate Setup
         for t, tm1 in zip(backtest.index[1:], backtest.index[:-1]):
             pos_open.loc[t] = pos_close.loc[tm1].copy()
-            pos_close.loc[t] = (
-                (tracker_df.loc[t] / tracker_df.loc[tm1])
-            ) * pos_open.loc[t].copy()
+            pos_close.loc[t] = ((trackers.loc[t] / trackers.loc[tm1])) * pos_open.loc[
+                t
+            ].copy()
             pnl[t] = (pos_close.loc[t] - pos_open.loc[t]).sum()
             backtest[t] = backtest[tm1] + pnl[t]
 
-            # overnight
-            if t.month != tm1.month:  # Rebalance on 1st BD
-                if tracker_df.loc[:t].shape[0] > 252:
-                    avaialbe_trackers = get_available_trackers(
-                        df_log_return.loc[:tm1],
-                        self.min_data_points,
+            if t.month != tm1.month:
+                avaialbe_trackers = get_available_trackers(
+                    log_returns.loc[:tm1],
+                    self.min_data_points,
+                )
+                cov = (
+                    calc_covariance(
+                        log_returns.loc[:tm1, avaialbe_trackers],
+                        cov_method,
+                        **cov_params,
                     )
-                    cov = (
-                        calc_covariance(
-                            df_log_return.loc[:tm1, avaialbe_trackers],
-                            cov_method,
-                            **cov_params,
-                        )
-                        * 252
-                        / self.r_wind
-                    )
-                    vols = cov_to_vols(cov)
-
+                    * 252
+                    / self.r_wind
+                )
+                vols = cov_to_vols(cov)
                 w_ = calc_weight(weight_method, vols).copy()
                 adj_factor = vol_target / np.sqrt(w_ @ cov @ w_).copy()
                 weights.loc[t] = adj_factor * w_.copy()
-                pos_close.loc[t] = (
-                    backtest[t] * weights.loc[t].copy()
-                )  # rebalance at close of 1st BD
+                # Rebalance at close of 1st BD
+                pos_close.loc[t] = backtest[t] * weights.loc[t].copy()
 
         if details:
-            return pd.concat(
-                [
-                    tracker_df.rename(columns=lambda col: col + "_tracker"),
-                    df_log_return.rename(columns=lambda col: col + "_log_return"),
-                    pos_close.rename(columns=lambda col: col + "_pos_close"),
-                    pos_open.rename(columns=lambda col: col + "_pos_open"),
-                    weights.rename(columns=lambda col: col + "_weights"),
-                    pnl.to_frame("pnl"),
-                    backtest.to_frame("backtest_tracker"),
-                ],
-                axis=1,
-                sort=True,
+            return Backtest.concatenate_output(
+                trackers, log_returns, pos_close, pos_open, weights, pnl, backtest
             )
         return backtest

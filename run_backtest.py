@@ -10,7 +10,7 @@ df_fx = load_trackers(FX_TRACKER_DICT)
 bt = Backtest()
 
 data = bt.run(
-    tracker_df=df_fx,
+    trackers=df_fx,
     weight_method="iv",
     cov_method="expanding",
     vol_target=0.1,
