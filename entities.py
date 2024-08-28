@@ -1,5 +1,5 @@
 EM_CDS_TRACKER_DICT = {
-    # "AED": "GSCDABBE Index", # no FX Tracker
+    "AED": "GSCDABBE Index", # no FX Tracker
     "ARS": "GSCDARBE Index",
     "BRL": "GSCDBRBE Index",
     "CLP": "GSCDCLBE Index",
@@ -62,24 +62,24 @@ FX_TRACKER_DICT = {
     "CLP": "JPFCTCLP Index",
     "CNY": "JPFCTCNY Index",
     "COP": "JPFCTCOP Index",
-    # "CZK": "JPFCTCZK Index",  # no CDS tracker
-    # "HUF": "JPFCTHUF Index",  # no CDS tracker
+    "CZK": "JPFCTCZK Index",  # no CDS tracker
+    "HUF": "JPFCTHUF Index",  # no CDS tracker
     "IDR": "JPFCTIDR Index",
-    # "INR": "JPFCTINR Index",  # no CDS tracker
+    "INR": "JPFCTINR Index",  # no CDS tracker
     "MXN": "JPFCTMXN Index",
     "MYR": "JPFCTMYR Index",
     # "PAB": "JPFCTPAB Index",  # pegged to dollar?
     "PEN": "JPFCTPEN Index",
     "PHP": "JPFCTPHP Index",
-    # "PLN": "JPFCTPLN Index", # no CDS tracker
+    "PLN": "JPFCTPLN Index", # no CDS tracker
     "QAR": "JPFCTQAR Index",
-    # "RON": "JPFCTRON Index",  # no CDS tracker
+    "RON": "JPFCTRON Index",  # no CDS tracker
     "RUB": "JPFCTRUB Index",
     # "SAR": "JPFCTSAR Index",  # pegged to dollar?
-    # "SGD": "JPFCTSGD Index",  # no CDS tracker
-    # "THB": "JPFCTTHB Index",  # no CDS tracker
+    "SGD": "JPFCTSGD Index",  # no CDS tracker
+    "THB": "JPFCTTHB Index",  # no CDS tracker
     "TRY": "JPFCTTRY Index",
-    # "TWD": "JPFCTTWD Index",  # no CDS tracker
+    "TWD": "JPFCTTWD Index",  # no CDS tracker
     "UAH": "JPFCTUAH Index",
     "ZAR": "JPFCTZAR Index",
 }

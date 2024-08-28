@@ -353,8 +353,6 @@ def calc_covariance(
 DataType = tuple[
     pd.DataFrame,
     pd.DataFrame,
-    pd.Timestamp,
-    pd.Timestamp,
     pd.Series,
     pd.DataFrame,
     pd.DataFrame,
@@ -397,8 +395,6 @@ class Backtest:
         return (
             trackers,
             log_returns,
-            t_0,
-            t_1,
             backtest,
             pos_open,
             pos_close,
@@ -432,16 +428,10 @@ class Backtest:
     ) -> Union[pd.DataFrame, pd.Series]:
 
         # Prepare Data
-        __series: DataType = self._prepare_data(trackers)
-        trackers: pd.DataFrame = __series[0]
-        log_returns: pd.DataFrame = __series[1]
-        t_0: pd.Timestamp = __series[2]
-        t_1: pd.Timestamp = __series[3]
-        backtest: pd.Series = __series[4]
-        pos_open: pd.DataFrame = __series[5]
-        pos_close: pd.DataFrame = __series[6]
-        pnl: pd.Series = __series[7]
-        weights: pd.DataFrame = __series[8]
+        trackers, log_returns, backtest, pos_open, pos_close, pnl, weights = (
+            self._prepare_data(trackers)
+        )
+        t_0 = backtest.index[0]
 
         # First Setup
         avaialbe_trackers = get_available_trackers(
@@ -457,6 +447,7 @@ class Backtest:
         w_ = calc_weight(weight_method, vols).copy()
         adj_factor = vol_target / np.sqrt(w_ @ cov @ w_).copy()
         weights.loc[t_0] = adj_factor * w_.copy()
+        # FIXME: not possible to use today's vol to balance the portfolio
 
         backtest[t_0] = 100.0
         pos_close.loc[t_0] = backtest[t_0] * weights.loc[t_0].copy()
