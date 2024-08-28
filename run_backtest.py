@@ -54,7 +54,7 @@ def long_only_iv_cds(trackers: pd.DataFrame):
     WEIGHT_METHOD = "iv"
 
     bt = Backtest()
-    data = bt.run(
+    return bt.run(
         trackers=trackers,
         weight_method=WEIGHT_METHOD,
         cov_method=COV_METHOD,
@@ -211,7 +211,7 @@ DICT_BACKTESTS = {
     "L-FX-S-CDS-IV-BN": port_beta_neutro_long_basket_iv_fx_short_basket_iv_cds,
 }
 
-for alias, operator in DICT_BACKTESTS:
+for alias, operator in DICT_BACKTESTS.items():
     data = operator()
     if data:
         data.to_excel(OUTPUT_FOLDER.joinpath(alias))
