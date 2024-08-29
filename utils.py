@@ -1,13 +1,15 @@
+import inspect
 import logging
 from typing import Any, Callable, Literal, Optional, Union, overload
-import inspect
+
 import numpy as np
 import pandas as pd
 import statsmodels.api as sm
+from scipy.optimize import minimize
+
 from bwbbgdl import GoGet
 from bwlogger import StyleAdapter
 from bwutils import TODAY, Date
-from scipy.optimize import minimize
 
 logger = StyleAdapter(logging.getLogger(__name__))
 
@@ -250,8 +252,8 @@ def _signal_to_rank(signal: pd.Series) -> pd.Series:
     return weight * scale
 
 
-def _weights_tsmom(returns: pd.Series, vol: pd.Series, **_) -> pd.Series:
-    return np.sign(returns) * 1 / vol / (1 / vol).sum()
+def _weights_tsmom(returns: pd.Series, vols: pd.Series, **_) -> pd.Series:
+    return np.sign(returns) * 1 / vols / (1 / vols).sum()
 
 
 def _weights_xsmom(returns: pd.Series, **_) -> pd.Series:
@@ -279,7 +281,7 @@ def calculate_factor_weight(
     factor: Literal["tsmom"],
     *,
     returns: pd.Series,
-    vol: pd.Series,
+    vols: pd.Series,
     **_,
 ) -> pd.Series: ...
 
@@ -318,7 +320,7 @@ def calculate_factor_weight(
         raise ValueError(
             f"Unknown data: '{factor}'. " f"Must be one of: {', '.join(WEGIHTS)}."
         )
-    return operator(**kwargs)
+    return operator(**kwargs).dropna()
 
 
 def inv_vol(vols: pd.Series) -> pd.Series:
@@ -329,11 +331,28 @@ def equal_weight(vols: pd.Series, **_) -> pd.Series:
     return (vols * 0 + 1) / vols.count()
 
 
-def calc_weight(method: Literal["iv", "ew"], vols: pd.Series) -> pd.Series:
+def calc_weight(
+    method: Literal["iv", "ew", "tsmom", "xsmom", "value_ppp", "value_paired"],
+    vols: pd.Series,
+    log_returns: Optional[pd.DataFrame] = None,
+    n_months: Optional[int] = None,
+) -> pd.Series:
     if method == "iv":
         return inv_vol(vols)
     elif method == "ew":
         return equal_weight(vols)
+    if method == "tsmom":
+        returns = log_returns.iloc[-21 * n_months :].sum()
+        return calculate_factor_weight(method, vols=vols, returns=returns)
+    # if method == "xsmom":
+    #     returns =
+    #     return calculate_factor_weight(method, vols=vols, returns=returns)
+    # if method == "value_ppp":
+    #     ppp =
+    #     return calculate_factor_weight(method, vols=vols, ppp=ppp)
+    # if method == "value_paired":
+    #     alpha =
+    #     return calculate_factor_weight(method, vols=vols, alpha=alpha)
     else:
         raise NotImplementedError("weight method not implemented")
 
@@ -369,7 +388,7 @@ class Backtest:
         self, r_wind: Optional[int] = None, min_data_points: Optional[int] = None
     ):
         self.r_wind = r_wind or self.r_wind
-        self.min_data_points = r_wind or self.min_data_points
+        self.min_data_points = min_data_points or self.min_data_points
 
     def _prepare_data(self, trackers: pd.DataFrame) -> DataType:
         trackers = trackers.fillna(method="ffill").copy()
@@ -424,6 +443,7 @@ class Backtest:
         cov_method: Literal["rolling", "expanding", "ewm"],
         vol_target: float = 0.1,
         cov_params: dict[str, Any] = {},
+        factor_params: dict[str, Any] = {},
         details: Optional[bool] = True,
     ) -> Union[pd.DataFrame, pd.Series]:
 
@@ -444,7 +464,12 @@ class Backtest:
             / self.r_wind
         )
         vols = cov_to_vols(cov)
-        w_ = calc_weight(weight_method, vols).copy()
+        w_ = calc_weight(
+            weight_method,
+            vols,
+            log_returns=np.log(trackers).diff(1).iloc[: self.min_data_points],
+            **factor_params,
+        ).copy()
         adj_factor = vol_target / np.sqrt(w_ @ cov @ w_).copy()
         weights.loc[t_0] = adj_factor * w_.copy()
         # FIXME: not possible to use today's vol to balance the portfolio
@@ -476,7 +501,12 @@ class Backtest:
                     / self.r_wind
                 )
                 vols = cov_to_vols(cov)
-                w_ = calc_weight(weight_method, vols).copy()
+                w_ = calc_weight(
+                    weight_method,
+                    vols,
+                    log_returns=np.log(trackers).diff(1).loc[:tm1],
+                    **factor_params,
+                ).copy()
                 adj_factor = vol_target / np.sqrt(w_ @ cov @ w_).copy()
                 weights.loc[t] = adj_factor * w_.copy()
                 # Rebalance at close of 1st BD

@@ -35,39 +35,138 @@ def filter_class(trackers: pd.DataFrame, fx_cds: Optional[Literal["cds", "fx"]] 
 
 
 def tsmom_cds_12m():
-    None
+    CLASS = "cds"
+    WEIGHT_METHOD = "tsmom"
+    N_MONTHS = 12
+
+    return bt.run(
+        trackers=filter_class(trackers, CLASS),
+        weight_method=WEIGHT_METHOD,
+        cov_method=COV_METHOD,
+        vol_target=VOL_TARGET,
+        details=True,
+        factor_params={"n_months": N_MONTHS},
+    )
 
 
 def tsmom_cds_6m():
-    None
+    CLASS = "cds"
+    WEIGHT_METHOD = "tsmom"
+    N_MONTHS = 6
+
+    return bt.run(
+        trackers=filter_class(trackers, CLASS),
+        weight_method=WEIGHT_METHOD,
+        cov_method=COV_METHOD,
+        vol_target=VOL_TARGET,
+        details=True,
+        factor_params={"n_months": N_MONTHS},
+    )
 
 
 def tsmom_cds_3m():
-    None
+    CLASS = "cds"
+    WEIGHT_METHOD = "tsmom"
+    N_MONTHS = 3
+
+    return bt.run(
+        trackers=filter_class(trackers, CLASS),
+        weight_method=WEIGHT_METHOD,
+        cov_method=COV_METHOD,
+        vol_target=VOL_TARGET,
+        details=True,
+        factor_params={"n_months": N_MONTHS},
+    )
 
 
 def tsmom_fx_12m():
-    None
+    CLASS = "fx"
+    WEIGHT_METHOD = "tsmom"
+    N_MONTHS = 12
+
+    return bt.run(
+        trackers=filter_class(trackers, CLASS),
+        weight_method=WEIGHT_METHOD,
+        cov_method=COV_METHOD,
+        vol_target=VOL_TARGET,
+        details=True,
+        factor_params={"n_months": N_MONTHS},
+    )
 
 
 def tsmom_fx_6m():
-    None
+    CLASS = "fx"
+    WEIGHT_METHOD = "tsmom"
+    N_MONTHS = 6
+
+    return bt.run(
+        trackers=filter_class(trackers, CLASS),
+        weight_method=WEIGHT_METHOD,
+        cov_method=COV_METHOD,
+        vol_target=VOL_TARGET,
+        details=True,
+        factor_params={"n_months": N_MONTHS},
+    )
 
 
 def tsmom_fx_3m():
-    None
+    CLASS = "fx"
+    WEIGHT_METHOD = "tsmom"
+    N_MONTHS = 3
+
+    return bt.run(
+        trackers=filter_class(trackers, CLASS),
+        weight_method=WEIGHT_METHOD,
+        cov_method=COV_METHOD,
+        vol_target=VOL_TARGET,
+        details=True,
+        factor_params={"n_months": N_MONTHS},
+    )
 
 
 def tsmom_12m():
-    None
+    CLASS = None
+    WEIGHT_METHOD = "tsmom"
+    N_MONTHS = 12
+
+    return bt.run(
+        trackers=filter_class(trackers, CLASS),
+        weight_method=WEIGHT_METHOD,
+        cov_method=COV_METHOD,
+        vol_target=VOL_TARGET,
+        details=True,
+        factor_params={"n_months": N_MONTHS},
+    )
 
 
 def tsmom_6m():
-    None
+    CLASS = None
+    WEIGHT_METHOD = "tsmom"
+    N_MONTHS = 12
+
+    return bt.run(
+        trackers=filter_class(trackers, CLASS),
+        weight_method=WEIGHT_METHOD,
+        cov_method=COV_METHOD,
+        vol_target=VOL_TARGET,
+        details=True,
+        factor_params={"n_months": N_MONTHS},
+    )
 
 
 def tsmom_3m():
-    None
+    CLASS = None
+    WEIGHT_METHOD = "tsmom"
+    N_MONTHS = 3
+
+    return bt.run(
+        trackers=filter_class(trackers, CLASS),
+        weight_method=WEIGHT_METHOD,
+        cov_method=COV_METHOD,
+        vol_target=VOL_TARGET,
+        details=True,
+        factor_params={"n_months": N_MONTHS},
+    )
 
 
 def value_fx_ppp():
@@ -166,10 +265,6 @@ def port_iv_neutro_long_basket_iv_fx_short_basket_iv_cds():
     None
 
 
-def port_iv_neutro_long_basket_iv_fx_short_basket_iv_cds():
-    None
-
-
 def port_iv_neutro_long_basket_ew_cds_short_basket_ew_fx():
     None
 
@@ -202,10 +297,10 @@ DICT_BACKTESTS = {
     "XSMOM-FX": xsmom_fx,
     "XSMOM-CDS": xsmom_cds,
     "XSMOM": xsmom,
-    "L-CDS-IV": long_cds_iv,
-    "L-FX-IV": long_fx_iv,
-    "L-CDS-EW": long_cds_ew,
-    "L-FX-EW": long_fx_ew,
+    # "L-CDS-IV": long_cds_iv,
+    # "L-FX-IV": long_fx_iv,
+    # "L-CDS-EW": long_cds_ew,
+    # "L-FX-EW": long_fx_ew,
     "LS-CDS-FX-IV": port_iv_long_short_cds_fx_iv,
     "LS-FX-CDS-IV": port_iv_long_short_fx_cds_iv,
     "LS-CDS-FX-BN-IV": port_iv_long_short_cds_fx_beta_neutro,
