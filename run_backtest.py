@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Optional
 
 import pandas as pd
 from entities import EM_CDS_TRACKER_DICT, FX_TRACKER_DICT
@@ -25,42 +25,13 @@ MIN_DATA_POINTS = 252 * 3
 bt = Backtest(RETURN_WINDOW, MIN_DATA_POINTS)
 
 
-def filter_class(trackers: pd.DataFrame, fx_cds: Literal["cds", "fx"]):
-    return trackers.loc[:, trackers.columns.str.contains(f"_{fx_cds}")].dropna(
-        how="all"
-    )
-
-
-def long_only(
-    trackers: pd.DataFrame,
-    weight_method: Literal["ew", "iv"],
-    fx_cds: Literal["cds", "fx"],
-):
-    trackers
-    return bt.run(
-        trackers=trackers,
-        weight_method=weight_method,
-        cov_method=COV_METHOD,
-        vol_target=VOL_TARGET,
-        details=True,
-    )
-
-
-def long_only_fx(trackers: pd.DataFrame, weight_method: Literal["ew", "iv"]):
-    trackers
-
-
-def long_only_iv_cds(trackers: pd.DataFrame):
-    WEIGHT_METHOD = "iv"
-
-    bt = Backtest()
-    return bt.run(
-        trackers=trackers,
-        weight_method=WEIGHT_METHOD,
-        cov_method=COV_METHOD,
-        vol_target=VOL_TARGET,
-        details=True,
-    )
+def filter_class(trackers: pd.DataFrame, fx_cds: Optional[Literal["cds", "fx"]] = None):
+    if fx_cds:
+        return trackers.loc[:, trackers.columns.str.contains(f"_{fx_cds}")].dropna(
+            how="all"
+        )
+    else:
+        return trackers
 
 
 def tsmom_cds_12m():
@@ -124,19 +95,55 @@ def xsmom():
 
 
 def long_cds_iv():
-    None
+    CLASS = "cds"
+    WEIGHT_METHOD = "iv"
+
+    return bt.run(
+        trackers=filter_class(trackers, CLASS),
+        weight_method=WEIGHT_METHOD,
+        cov_method=COV_METHOD,
+        vol_target=VOL_TARGET,
+        details=True,
+    )
 
 
 def long_fx_iv():
-    None
+    CLASS = "fx"
+    WEIGHT_METHOD = "iv"
+
+    return bt.run(
+        trackers=filter_class(trackers, CLASS),
+        weight_method=WEIGHT_METHOD,
+        cov_method=COV_METHOD,
+        vol_target=VOL_TARGET,
+        details=True,
+    )
 
 
 def long_cds_ew():
-    None
+    CLASS = "cds"
+    WEIGHT_METHOD = "ew"
+
+    return bt.run(
+        trackers=filter_class(trackers, CLASS),
+        weight_method=WEIGHT_METHOD,
+        cov_method=COV_METHOD,
+        vol_target=VOL_TARGET,
+        details=True,
+    )
 
 
 def long_fx_ew():
-    None
+    CLASS = "fx"
+    WEIGHT_METHOD = "ew"
+
+    return bt.run(
+        trackers=filter_class(trackers, CLASS),
+        weight_method=WEIGHT_METHOD,
+        cov_method=COV_METHOD,
+        vol_target=VOL_TARGET,
+        details=True,
+    )
 
 
 def port_iv_long_short_cds_fx_iv():
@@ -213,5 +220,5 @@ DICT_BACKTESTS = {
 
 for alias, operator in DICT_BACKTESTS.items():
     data = operator()
-    if data:
-        data.to_excel(OUTPUT_FOLDER.joinpath(alias))
+    if data is not None:
+        data.to_excel(OUTPUT_FOLDER.joinpath(f"{alias}.xlsx"))
