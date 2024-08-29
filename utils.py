@@ -344,9 +344,9 @@ def calc_weight(
     if method == "tsmom":
         returns = log_returns.iloc[-21 * n_months :].sum()
         return calculate_factor_weight(method, vols=vols, returns=returns)
-    # if method == "xsmom":
-    #     returns =
-    #     return calculate_factor_weight(method, vols=vols, returns=returns)
+    if method == "xsmom":
+        returns = log_returns.iloc[-21 * n_months :].sum()
+        return calculate_factor_weight(method, returns=returns)
     # if method == "value_ppp":
     #     ppp =
     #     return calculate_factor_weight(method, vols=vols, ppp=ppp)
@@ -467,7 +467,9 @@ class Backtest:
         w_ = calc_weight(
             weight_method,
             vols,
-            log_returns=np.log(trackers).diff(1).iloc[: self.min_data_points],
+            log_returns=np.log(trackers[avaialbe_trackers])
+            .diff(1)
+            .iloc[: self.min_data_points],
             **factor_params,
         ).copy()
         adj_factor = vol_target / np.sqrt(w_ @ cov @ w_).copy()
@@ -504,7 +506,7 @@ class Backtest:
                 w_ = calc_weight(
                     weight_method,
                     vols,
-                    log_returns=np.log(trackers).diff(1).loc[:tm1],
+                    log_returns=np.log(trackers[avaialbe_trackers]).diff(1).loc[:tm1],
                     **factor_params,
                 ).copy()
                 adj_factor = vol_target / np.sqrt(w_ @ cov @ w_).copy()

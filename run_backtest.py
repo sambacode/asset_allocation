@@ -182,15 +182,48 @@ def value_cds_paired():
 
 
 def xsmom_fx():
-    None
+    CLASS = "fx"
+    WEIGHT_METHOD = "xsmom"
+    N_MONTHS = 12
+
+    return bt.run(
+        trackers=filter_class(trackers, CLASS),
+        weight_method=WEIGHT_METHOD,
+        cov_method=COV_METHOD,
+        vol_target=VOL_TARGET,
+        details=True,
+        factor_params={"n_months": N_MONTHS},
+    )
 
 
 def xsmom_cds():
-    None
+    CLASS = "cds"
+    WEIGHT_METHOD = "xsmom"
+    N_MONTHS = 12
+
+    return bt.run(
+        trackers=filter_class(trackers, CLASS),
+        weight_method=WEIGHT_METHOD,
+        cov_method=COV_METHOD,
+        vol_target=VOL_TARGET,
+        details=True,
+        factor_params={"n_months": N_MONTHS},
+    )
 
 
 def xsmom():
-    None
+    CLASS = None
+    WEIGHT_METHOD = "xsmom"
+    N_MONTHS = 12
+
+    return bt.run(
+        trackers=filter_class(trackers, CLASS),
+        weight_method=WEIGHT_METHOD,
+        cov_method=COV_METHOD,
+        vol_target=VOL_TARGET,
+        details=True,
+        factor_params={"n_months": N_MONTHS},
+    )
 
 
 def long_cds_iv():
@@ -282,21 +315,21 @@ def port_beta_neutro_long_basket_iv_fx_short_basket_iv_cds():
 
 
 DICT_BACKTESTS = {
-    "TSMOM-CDS-12": tsmom_cds_12m,
-    "TSMOM-CDS-6": tsmom_cds_6m,
-    "TSMOM-CDS-3": tsmom_cds_3m,
-    "TSMOM-FX-12": tsmom_fx_12m,
-    "TSMOM-FX-6": tsmom_fx_6m,
-    "TSMOM-FX-3": tsmom_fx_3m,
-    "TSMOM-12": tsmom_12m,
-    "TSMOM-6": tsmom_6m,
-    "TSMOM-3": tsmom_3m,
+    # "TSMOM-CDS-12": tsmom_cds_12m,
+    # "TSMOM-CDS-6": tsmom_cds_6m,
+    # "TSMOM-CDS-3": tsmom_cds_3m,
+    # "TSMOM-FX-12": tsmom_fx_12m,
+    # "TSMOM-FX-6": tsmom_fx_6m,
+    # "TSMOM-FX-3": tsmom_fx_3m,
+    # "TSMOM-12": tsmom_12m,
+    # "TSMOM-6": tsmom_6m,
+    # "TSMOM-3": tsmom_3m,
     "VALUE-FX-PPP": value_fx_ppp,
     "VALUE-FX-PAIRED": value_fx_paired,
     "VALUE-CDS-PAIRED": value_cds_paired,
-    "XSMOM-FX": xsmom_fx,
-    "XSMOM-CDS": xsmom_cds,
-    "XSMOM": xsmom,
+    # "XSMOM-FX": xsmom_fx,
+    # "XSMOM-CDS": xsmom_cds,
+    # "XSMOM": xsmom,
     # "L-CDS-IV": long_cds_iv,
     # "L-FX-IV": long_fx_iv,
     # "L-CDS-EW": long_cds_ew,
