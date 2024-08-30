@@ -439,7 +439,7 @@ class Backtest:
     def run(
         self,
         trackers: pd.DataFrame,
-        weight_method: Literal["iv", "ew"],
+        weight_method: Literal["iv", "ew", "tsmom", "xsmom", "value_ppp", "value_paired"],
         cov_method: Literal["rolling", "expanding", "ewm"],
         vol_target: float = 0.1,
         cov_params: dict[str, Any] = {},
