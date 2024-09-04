@@ -15,7 +15,7 @@ OUTPUT_FOLDER = Path(
 
 fx = load_trackers(FX_TRACKER_DICT).rename(columns=lambda col: col + "_fx")
 cds = load_trackers(EM_CDS_TRACKER_DICT).rename(columns=lambda col: col + "_cds")
-trackers = pd.concat([fx, cds], axis=1, join="outer")
+trackers = pd.concat([fx, cds], axis=1, join="outer").fillna(method="ffill", limit=5)
 
 
 COV_METHOD = "expanding"
@@ -174,11 +174,31 @@ def value_fx_ppp():
 
 
 def value_fx_paired():
-    None
+    CLASS = "fx"
+    WEIGHT_METHOD = "value_paired"
+
+    return bt.run(
+        trackers=trackers.loc["2008-08-07":],
+        weight_method=WEIGHT_METHOD,
+        cov_method=COV_METHOD,
+        vol_target=VOL_TARGET,
+        details=True,
+        factor_params={"endog": CLASS},
+    )
 
 
 def value_cds_paired():
-    None
+    CLASS = "cds"
+    WEIGHT_METHOD = "value_paired"
+
+    return bt.run(
+        trackers=trackers.loc["2008-08-07":],
+        weight_method=WEIGHT_METHOD,
+        cov_method=COV_METHOD,
+        vol_target=VOL_TARGET,
+        details=True,
+        factor_params={"endog": CLASS},
+    )
 
 
 def xsmom_fx():
@@ -325,8 +345,8 @@ DICT_BACKTESTS = {
     # "TSMOM-6": tsmom_6m,
     # "TSMOM-3": tsmom_3m,
     "VALUE-FX-PPP": value_fx_ppp,
-    "VALUE-FX-PAIRED": value_fx_paired,
-    "VALUE-CDS-PAIRED": value_cds_paired,
+    # "VALUE-FX-PAIRED": value_fx_paired,
+    # "VALUE-CDS-PAIRED": value_cds_paired,
     # "XSMOM-FX": xsmom_fx,
     # "XSMOM-CDS": xsmom_cds,
     # "XSMOM": xsmom,
@@ -346,7 +366,8 @@ DICT_BACKTESTS = {
     "L-FX-S-CDS-IV-BN": port_beta_neutro_long_basket_iv_fx_short_basket_iv_cds,
 }
 
-for alias, operator in DICT_BACKTESTS.items():
-    data = operator()
-    if data is not None:
-        data.to_excel(OUTPUT_FOLDER.joinpath(f"{alias}.xlsx"))
+if __name__ == "__main__":
+    for alias, operator in DICT_BACKTESTS.items():
+        data = operator()
+        if data is not None:
+            data.to_excel(OUTPUT_FOLDER.joinpath(f"{alias}.xlsx"))

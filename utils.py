@@ -245,6 +245,7 @@ def load_trackers(
 
 
 def _signal_to_rank(signal: pd.Series) -> pd.Series:
+    signal = signal.dropna()
     assert not signal.isna().any(), "NaN value in signal"
     rank = signal.rank()
     weight = rank - rank.sum() / rank.count()
@@ -264,13 +265,13 @@ def _weights_value_ppp(ppp: pd.Series, **_) -> pd.Series:
     return _signal_to_rank(ppp)
 
 
-def _weights_value_alpha(alpha: pd.Series, **_) -> pd.Series:
+def _weights_value_paired(alpha: pd.Series, **_) -> pd.Series:
     return _signal_to_rank(alpha)
 
 
 WEGIHTS: dict[str, Callable] = {
     "tsmom": _weights_tsmom,
-    "value_alpha": _weights_value_alpha,
+    "value_paired": _weights_value_paired,
     "value_ppp": _weights_value_ppp,
     "xsmom": _weights_xsmom,
 }
@@ -288,7 +289,7 @@ def calculate_factor_weight(
 
 @overload
 def calculate_factor_weight(
-    factor: Literal["value_alpha"],
+    factor: Literal["value_paired"],
     *,
     alpha: pd.Series,
     **_,
@@ -314,7 +315,7 @@ def calculate_factor_weight(
 
 
 def calculate_factor_weight(
-    factor: Literal["tsmom", "value_alpha", "value_ppp", "xsmom"], **kwargs
+    factor: Literal["tsmom", "value_paired", "value_ppp", "xsmom"], **kwargs
 ) -> pd.Series:
     if (operator := WEGIHTS.get(factor)) is None:
         raise ValueError(
@@ -331,28 +332,53 @@ def equal_weight(vols: pd.Series, **_) -> pd.Series:
     return (vols * 0 + 1) / vols.count()
 
 
+def calculate_alphas_fx_cds_pairs(
+    endog: Literal["fx", "cds"], daily_log_returns: pd.DataFrame
+) -> pd.Series:
+    code = pd.Series([col[:3] for col in daily_log_returns.columns])
+    code_unique = code[code.duplicated(keep="first")].to_list()
+    pairs = [(f"{code}_fx", f"{code}_cds") for code in code_unique]
+    returns = daily_log_returns.rolling(252).sum().iloc[-1]
+    cov = calc_covariance(daily_log_returns, "rolling", window=252)
+    vols = cov_to_vols(cov)
+    betas = pd.Series(
+        {(fx, cds): cov.loc[fx, cds] / (vols[cds] ** 2) for fx, cds in pairs}
+    )
+    alphas = pd.Series(
+        {
+            idx1: returns[idx1] - returns[idx2] * beta
+            for ((idx1, idx2), beta) in betas.iteritems()
+        }
+    )
+    if endog == "fx":
+        return alphas
+    else:
+        return -1 * alphas.rename(index=lambda idx: idx.replace("fx", "cds"))
+
+
 def calc_weight(
     method: Literal["iv", "ew", "tsmom", "xsmom", "value_ppp", "value_paired"],
     vols: pd.Series,
     log_returns: Optional[pd.DataFrame] = None,
     n_months: Optional[int] = None,
+    endog: Optional[Literal["fx", "cds"]] = None,
 ) -> pd.Series:
     if method == "iv":
         return inv_vol(vols)
     elif method == "ew":
         return equal_weight(vols)
-    if method == "tsmom":
+    elif method == "tsmom":
         returns = log_returns.iloc[-21 * n_months :].sum()
         return calculate_factor_weight(method, vols=vols, returns=returns)
-    if method == "xsmom":
+    elif method == "xsmom":
         returns = log_returns.iloc[-21 * n_months :].sum()
         return calculate_factor_weight(method, returns=returns)
-    # if method == "value_ppp":
+    # elif method == "value_ppp":
     #     ppp =
     #     return calculate_factor_weight(method, vols=vols, ppp=ppp)
-    # if method == "value_paired":
-    #     alpha =
-    #     return calculate_factor_weight(method, vols=vols, alpha=alpha)
+    elif method == "value_paired":
+        alpha = calculate_alphas_fx_cds_pairs(endog, log_returns)
+        return calculate_factor_weight(method, alpha=alpha)
     else:
         raise NotImplementedError("weight method not implemented")
 
@@ -383,12 +409,17 @@ DataType = tuple[
 class Backtest:
     min_data_points = 252 * 3
     r_wind = 21
+    trackers: pd.DataFrame
 
     def __init__(
-        self, r_wind: Optional[int] = None, min_data_points: Optional[int] = None
+        self,
+        r_wind: Optional[int] = None,
+        min_data_points: Optional[int] = None,
+        trackers: Optional[pd.DataFrame] = None,
     ):
         self.r_wind = r_wind or self.r_wind
         self.min_data_points = min_data_points or self.min_data_points
+        self.trackers = trackers
 
     def _prepare_data(self, trackers: pd.DataFrame) -> DataType:
         trackers = trackers.fillna(method="ffill").copy()
@@ -439,13 +470,16 @@ class Backtest:
     def run(
         self,
         trackers: pd.DataFrame,
-        weight_method: Literal["iv", "ew", "tsmom", "xsmom", "value_ppp", "value_paired"],
+        weight_method: Literal[
+            "iv", "ew", "tsmom", "xsmom", "value_ppp", "value_paired"
+        ],
         cov_method: Literal["rolling", "expanding", "ewm"],
         vol_target: float = 0.1,
         cov_params: dict[str, Any] = {},
         factor_params: dict[str, Any] = {},
         details: Optional[bool] = True,
     ) -> Union[pd.DataFrame, pd.Series]:
+        endog = factor_params.get("endog", "_")
 
         # Prepare Data
         trackers, log_returns, backtest, pos_open, pos_close, pnl, weights = (
@@ -459,7 +493,11 @@ class Backtest:
             self.min_data_points,
         )
         cov = (
-            calc_covariance(log_returns[avaialbe_trackers], cov_method, **cov_params)
+            calc_covariance(
+                log_returns[avaialbe_trackers].filter(like=endog, axis=1),
+                cov_method,
+                **cov_params,
+            )
             * 252
             / self.r_wind
         )
@@ -472,7 +510,7 @@ class Backtest:
             .iloc[: self.min_data_points],
             **factor_params,
         ).copy()
-        adj_factor = vol_target / np.sqrt(w_ @ cov @ w_).copy()
+        adj_factor = vol_target / np.sqrt(w_ @ cov.loc[w_.index, w_.index] @ w_).copy()
         weights.loc[t_0] = adj_factor * w_.copy()
         # FIXME: not possible to use today's vol to balance the portfolio
 
@@ -495,7 +533,9 @@ class Backtest:
                 )
                 cov = (
                     calc_covariance(
-                        log_returns.loc[:tm1, avaialbe_trackers],
+                        log_returns.loc[:tm1, avaialbe_trackers].filter(
+                            like=endog, axis=1
+                        ),
                         cov_method,
                         **cov_params,
                     )
@@ -509,7 +549,9 @@ class Backtest:
                     log_returns=np.log(trackers[avaialbe_trackers]).diff(1).loc[:tm1],
                     **factor_params,
                 ).copy()
-                adj_factor = vol_target / np.sqrt(w_ @ cov @ w_).copy()
+                adj_factor = (
+                    vol_target / np.sqrt(w_ @ cov.loc[w_.index, w_.index] @ w_).copy()
+                )
                 weights.loc[t] = adj_factor * w_.copy()
                 # Rebalance at close of 1st BD
                 pos_close.loc[t] = backtest[t] * weights.loc[t].copy()
