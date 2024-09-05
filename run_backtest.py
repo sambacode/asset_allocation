@@ -246,7 +246,13 @@ def xsmom():
     )
 
 
-def long_cds_iv():
+def long_cds_iv(cached_backtest: bool = False):
+    if cached_backtest:
+        path = OUTPUT_FOLDER.joinpath("L-CDS-IV.xlsx")
+        backtest = pd.read_excel(path, index_col=0)["backtest"].dropna()
+        backtest.name = path.stem
+        return backtest
+
     CLASS = "cds"
     WEIGHT_METHOD = "iv"
 
@@ -259,7 +265,13 @@ def long_cds_iv():
     )
 
 
-def long_fx_iv():
+def long_fx_iv(cached_backtest: bool = False):
+    if cached_backtest:
+        path = OUTPUT_FOLDER.joinpath("L-FX-IV.xlsx")
+        backtest = pd.read_excel(path, index_col=0)["backtest"].dropna()
+        backtest.name = path.stem
+        return backtest
+
     CLASS = "fx"
     WEIGHT_METHOD = "iv"
 
@@ -272,7 +284,13 @@ def long_fx_iv():
     )
 
 
-def long_cds_ew():
+def long_cds_ew(cached_backtest: bool = False):
+    if cached_backtest:
+        path = OUTPUT_FOLDER.joinpath("L-CDS-EW.xlsx")
+        backtest = pd.read_excel(path, index_col=0)["backtest"].dropna()
+        backtest.name = path.stem
+        return backtest
+
     CLASS = "cds"
     WEIGHT_METHOD = "ew"
 
@@ -285,7 +303,13 @@ def long_cds_ew():
     )
 
 
-def long_fx_ew():
+def long_fx_ew(cached_backtest: bool = False):
+    if cached_backtest:
+        path = OUTPUT_FOLDER.joinpath("L-FX-EW.xlsx")
+        backtest = pd.read_excel(path, index_col=0)["backtest"].dropna()
+        backtest.name = path.stem
+        return backtest
+
     CLASS = "fx"
     WEIGHT_METHOD = "ew"
 
