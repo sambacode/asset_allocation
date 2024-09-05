@@ -494,8 +494,8 @@ DICT_BACKTESTS = {
     # "L-CDS-S-FX-IV": port_iv_neutro_long_basket_iv_cds_short_basket_iv_fx,
     # "L-FX-S-CDS-EW": port_iv_neutro_long_basket_ew_fx_short_basket_ew_cds,
     # "L-CDS-S-FX-EW": port_iv_neutro_long_basket_ew_cds_short_basket_ew_fx,
-    "L-CDS-S-FX-IV-BN": port_beta_neutro_long_basket_iv_cds_short_basket_iv_fx,
-    "L-FX-S-CDS-IV-BN": port_beta_neutro_long_basket_iv_fx_short_basket_iv_cds,
+    # "L-CDS-S-FX-IV-BN": port_beta_neutro_long_basket_iv_cds_short_basket_iv_fx,
+    # "L-FX-S-CDS-IV-BN": port_beta_neutro_long_basket_iv_fx_short_basket_iv_cds,
 }
 
 if __name__ == "__main__":
