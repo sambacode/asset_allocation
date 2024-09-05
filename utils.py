@@ -479,7 +479,7 @@ class Backtest:
         factor_params: dict[str, Any] = {},
         details: Optional[bool] = True,
     ) -> Union[pd.DataFrame, pd.Series]:
-        endog = factor_params.get("endog", "_")
+        endog = factor_params.get("endog")
 
         # Prepare Data
         trackers, log_returns, backtest, pos_open, pos_close, pnl, weights = (
@@ -494,7 +494,11 @@ class Backtest:
         )
         cov = (
             calc_covariance(
-                log_returns[avaialbe_trackers].filter(like=endog, axis=1),
+                (
+                    log_returns[avaialbe_trackers].filter(like=endog, axis=1)
+                    if endog
+                    else log_returns[avaialbe_trackers]
+                ),
                 cov_method,
                 **cov_params,
             )
@@ -533,8 +537,12 @@ class Backtest:
                 )
                 cov = (
                     calc_covariance(
-                        log_returns.loc[:tm1, avaialbe_trackers].filter(
-                            like=endog, axis=1
+                        (
+                            log_returns.loc[:tm1, avaialbe_trackers].filter(
+                                like=endog, axis=1
+                            )
+                            if endog
+                            else log_returns.loc[:tm1, avaialbe_trackers]
                         ),
                         cov_method,
                         **cov_params,

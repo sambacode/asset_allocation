@@ -249,9 +249,7 @@ def xsmom():
 def long_cds_iv(cached_backtest: bool = False):
     if cached_backtest:
         path = OUTPUT_FOLDER.joinpath("L-CDS-IV.xlsx")
-        backtest = pd.read_excel(path, index_col=0)["backtest"].dropna()
-        backtest.name = path.stem
-        return backtest
+        return pd.read_excel(path, index_col=0)["backtest"].dropna().rename(path.stem)
 
     CLASS = "cds"
     WEIGHT_METHOD = "iv"
@@ -268,9 +266,7 @@ def long_cds_iv(cached_backtest: bool = False):
 def long_fx_iv(cached_backtest: bool = False):
     if cached_backtest:
         path = OUTPUT_FOLDER.joinpath("L-FX-IV.xlsx")
-        backtest = pd.read_excel(path, index_col=0)["backtest"].dropna()
-        backtest.name = path.stem
-        return backtest
+        return pd.read_excel(path, index_col=0)["backtest"].dropna().rename(path.stem)
 
     CLASS = "fx"
     WEIGHT_METHOD = "iv"
@@ -287,9 +283,7 @@ def long_fx_iv(cached_backtest: bool = False):
 def long_cds_ew(cached_backtest: bool = False):
     if cached_backtest:
         path = OUTPUT_FOLDER.joinpath("L-CDS-EW.xlsx")
-        backtest = pd.read_excel(path, index_col=0)["backtest"].dropna()
-        backtest.name = path.stem
-        return backtest
+        return pd.read_excel(path, index_col=0)["backtest"].dropna().rename(path.stem)
 
     CLASS = "cds"
     WEIGHT_METHOD = "ew"
@@ -306,9 +300,7 @@ def long_cds_ew(cached_backtest: bool = False):
 def long_fx_ew(cached_backtest: bool = False):
     if cached_backtest:
         path = OUTPUT_FOLDER.joinpath("L-FX-EW.xlsx")
-        backtest = pd.read_excel(path, index_col=0)["backtest"].dropna()
-        backtest.name = path.stem
-        return backtest
+        return pd.read_excel(path, index_col=0)["backtest"].dropna().rename(path.stem)
 
     CLASS = "fx"
     WEIGHT_METHOD = "ew"
@@ -338,16 +330,88 @@ def port_iv_long_short_fx_cds_beta_neutro():
     None
 
 
+def port_iv_neutro_long_basket_iv_cds_short_basket_iv_fx():
+    WEIGHT_METHOD = "iv"
+    long = long_cds_iv(cached_backtest=True)
+    short = long_fx_iv(cached_backtest=True)
+    short = (short**-1 * 10000).rename("S-FX-IV")
+
+    trackers = pd.concat(
+        [long, short],
+        axis=1,
+        join="inner",
+    )
+    # TODO: cehck min_data_points impact
+    return bt.run(
+        trackers=trackers,
+        weight_method=WEIGHT_METHOD,
+        cov_method=COV_METHOD,
+        vol_target=VOL_TARGET,
+        details=True,
+    )
+
+
 def port_iv_neutro_long_basket_iv_fx_short_basket_iv_cds():
-    None
+    WEIGHT_METHOD = "iv"
+    long = long_fx_iv(cached_backtest=True)
+    short = long_cds_iv(cached_backtest=True)
+    short = (short**-1 * 10000).rename("S-CDS-IV")
+
+    trackers = pd.concat(
+        [long, short],
+        axis=1,
+        join="inner",
+    )
+    # TODO: cehck min_data_points impact
+    return bt.run(
+        trackers=trackers,
+        weight_method=WEIGHT_METHOD,
+        cov_method=COV_METHOD,
+        vol_target=VOL_TARGET,
+        details=True,
+    )
 
 
 def port_iv_neutro_long_basket_ew_cds_short_basket_ew_fx():
-    None
+    WEIGHT_METHOD = "iv"
+    long = long_cds_ew(cached_backtest=True)
+    short = long_fx_ew(cached_backtest=True)
+    short = (short**-1 * 10000).rename("S-FX-EW")
+
+    trackers = pd.concat(
+        [long, short],
+        axis=1,
+        join="inner",
+    )
+    # TODO: cehck min_data_points impact
+    return bt.run(
+        trackers=trackers,
+        weight_method=WEIGHT_METHOD,
+        cov_method=COV_METHOD,
+        vol_target=VOL_TARGET,
+        details=True,
+    )
 
 
 def port_iv_neutro_long_basket_ew_fx_short_basket_ew_cds():
-    None
+    WEIGHT_METHOD = "iv"
+    long = long_fx_ew(cached_backtest=True)
+    short = long_cds_ew(cached_backtest=True)
+    short = (short**-1 * 10000).rename("S-CDS-EW")
+
+    trackers = pd.concat(
+        [long, short],
+        axis=1,
+        join="inner",
+    )
+    # TODO: cehck min_data_points impact
+    return bt.run(
+        trackers=trackers,
+        weight_method=WEIGHT_METHOD,
+        cov_method=COV_METHOD,
+        vol_target=VOL_TARGET,
+        details=True,
+    )
 
 
 def port_beta_neutro_long_basket_iv_cds_short_basket_iv_fx():
@@ -383,9 +447,9 @@ DICT_BACKTESTS = {
     "LS-CDS-FX-BN-IV": port_iv_long_short_cds_fx_beta_neutro,
     "LS-FX-CDS-BN-IV": port_iv_long_short_fx_cds_beta_neutro,
     "L-FX-S-CDS-IV": port_iv_neutro_long_basket_iv_fx_short_basket_iv_cds,
-    "L-CDS-S-FX-IV": port_iv_neutro_long_basket_iv_fx_short_basket_iv_cds,
-    "L-FX-S-CDS-EW": port_iv_neutro_long_basket_ew_cds_short_basket_ew_fx,
-    "L-CDS-S-FX-EW": port_iv_neutro_long_basket_ew_fx_short_basket_ew_cds,
+    "L-CDS-S-FX-IV": port_iv_neutro_long_basket_iv_cds_short_basket_iv_fx,
+    "L-FX-S-CDS-EW": port_iv_neutro_long_basket_ew_fx_short_basket_ew_cds,
+    "L-CDS-S-FX-EW": port_iv_neutro_long_basket_ew_cds_short_basket_ew_fx,
     "L-CDS-S-FX-IV-BN": port_beta_neutro_long_basket_iv_cds_short_basket_iv_fx,
     "L-FX-S-CDS-IV-BN": port_beta_neutro_long_basket_iv_fx_short_basket_iv_cds,
 }
