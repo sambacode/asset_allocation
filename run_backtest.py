@@ -415,11 +415,55 @@ def port_iv_neutro_long_basket_ew_fx_short_basket_ew_cds():
 
 
 def port_beta_neutro_long_basket_iv_cds_short_basket_iv_fx():
-    None
+    WEIGHT_METHOD = "bn"
+    N_MONTHS = 12
+
+    long = long_cds_iv(cached_backtest=True)
+    short = long_fx_iv(cached_backtest=True)
+
+    trackers = pd.concat(
+        [long, short],
+        axis=1,
+        join="inner",
+    )
+    # TODO: cehck min_data_points impact
+    return bt.run(
+        trackers=trackers,
+        weight_method=WEIGHT_METHOD,
+        cov_method=COV_METHOD,
+        vol_target=VOL_TARGET,
+        details=True,
+        factor_params={
+            "n_months": N_MONTHS,
+            "long_short": {"long": long.name, "short": short.name},
+        },
+    )
 
 
 def port_beta_neutro_long_basket_iv_fx_short_basket_iv_cds():
-    None
+    WEIGHT_METHOD = "bn"
+    N_MONTHS = 12
+
+    long = long_fx_iv(cached_backtest=True)
+    short = long_cds_iv(cached_backtest=True)
+
+    trackers = pd.concat(
+        [long, short],
+        axis=1,
+        join="inner",
+    )
+    # TODO: cehck min_data_points impact
+    return bt.run(
+        trackers=trackers,
+        weight_method=WEIGHT_METHOD,
+        cov_method=COV_METHOD,
+        vol_target=VOL_TARGET,
+        details=True,
+        factor_params={
+            "n_months": N_MONTHS,
+            "long_short": {"long": long.name, "short": short.name},
+        },
+    )
 
 
 DICT_BACKTESTS = {
@@ -446,10 +490,10 @@ DICT_BACKTESTS = {
     "LS-FX-CDS-IV": port_iv_long_short_fx_cds_iv,
     "LS-CDS-FX-BN-IV": port_iv_long_short_cds_fx_beta_neutro,
     "LS-FX-CDS-BN-IV": port_iv_long_short_fx_cds_beta_neutro,
-    "L-FX-S-CDS-IV": port_iv_neutro_long_basket_iv_fx_short_basket_iv_cds,
-    "L-CDS-S-FX-IV": port_iv_neutro_long_basket_iv_cds_short_basket_iv_fx,
-    "L-FX-S-CDS-EW": port_iv_neutro_long_basket_ew_fx_short_basket_ew_cds,
-    "L-CDS-S-FX-EW": port_iv_neutro_long_basket_ew_cds_short_basket_ew_fx,
+    # "L-FX-S-CDS-IV": port_iv_neutro_long_basket_iv_fx_short_basket_iv_cds,
+    # "L-CDS-S-FX-IV": port_iv_neutro_long_basket_iv_cds_short_basket_iv_fx,
+    # "L-FX-S-CDS-EW": port_iv_neutro_long_basket_ew_fx_short_basket_ew_cds,
+    # "L-CDS-S-FX-EW": port_iv_neutro_long_basket_ew_cds_short_basket_ew_fx,
     "L-CDS-S-FX-IV-BN": port_beta_neutro_long_basket_iv_cds_short_basket_iv_fx,
     "L-FX-S-CDS-IV-BN": port_beta_neutro_long_basket_iv_fx_short_basket_iv_cds,
 }

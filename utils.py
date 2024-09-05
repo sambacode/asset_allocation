@@ -357,11 +357,12 @@ def calculate_alphas_fx_cds_pairs(
 
 
 def calc_weight(
-    method: Literal["iv", "ew", "tsmom", "xsmom", "value_ppp", "value_paired"],
+    method: Literal["bn", "iv", "ew", "tsmom", "xsmom", "value_ppp", "value_paired"],
     vols: pd.Series,
     log_returns: Optional[pd.DataFrame] = None,
     n_months: Optional[int] = None,
     endog: Optional[Literal["fx", "cds"]] = None,
+    long_short: dict[Literal["long", "short"], str] = None,
 ) -> pd.Series:
     if method == "iv":
         return inv_vol(vols)
@@ -379,6 +380,16 @@ def calc_weight(
     elif method == "value_paired":
         alpha = calculate_alphas_fx_cds_pairs(endog, log_returns)
         return calculate_factor_weight(method, alpha=alpha)
+    elif method == "bn":
+        long = log_returns[long_short["long"]].iloc[-21 * n_months :].rolling(21).sum()
+        short = log_returns[long_short["long"]].iloc[-21 * n_months :].rolling(21).sum()
+        return pd.Series(
+            {
+                long.name: 1,
+                short.name: -long.cov(short) / short.var(),
+            }
+        )
+
     else:
         raise NotImplementedError("weight method not implemented")
 
@@ -471,7 +482,7 @@ class Backtest:
         self,
         trackers: pd.DataFrame,
         weight_method: Literal[
-            "iv", "ew", "tsmom", "xsmom", "value_ppp", "value_paired"
+            "bn", "iv", "ew", "tsmom", "xsmom", "value_ppp", "value_paired"
         ],
         cov_method: Literal["rolling", "expanding", "ewm"],
         vol_target: float = 0.1,
