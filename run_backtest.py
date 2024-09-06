@@ -25,6 +25,16 @@ MIN_DATA_POINTS = 252 * 3
 bt = Backtest(RETURN_WINDOW, MIN_DATA_POINTS)
 
 
+def get_pairs(trackers: pd.DataFrame, ccy: str, long_class: Literal["cds", "fx"]):
+    short_class = "fx" if long_class == "cds" else "cds"
+    df = trackers.filter(like=ccy).copy().dropna()
+    long = df.filter(like=long_class).iloc[:, 0]
+    short = df.filter(like=short_class).iloc[:, 0]
+    short = (short**-1) * short.iloc[0] * 100
+    long = long / long.iloc[0] * 100
+    return long.rename(f"long_{long.name}"), short.rename(f"short_{short.name}")
+
+
 def filter_class(trackers: pd.DataFrame, fx_cds: Optional[Literal["cds", "fx"]] = None):
     if fx_cds:
         return trackers.loc[:, trackers.columns.str.contains(f"_{fx_cds}")].dropna(
@@ -466,6 +476,97 @@ def port_beta_neutro_long_basket_iv_fx_short_basket_iv_cds():
     )
 
 
+def _long_short_pair(
+    ccy: str, long_class: Literal["cds", "fx"], weight_method: Literal["iv", "ew"]
+):
+    N_MONTHS = 12
+    # TODO: cehck min_data_points impact
+    long, short = get_pairs(trackers, ccy, long_class)
+    return bt.run(
+        trackers=pd.concat([long, short], axis=1),
+        weight_method=weight_method,
+        cov_method=COV_METHOD,
+        vol_target=VOL_TARGET,
+        details=True,
+        factor_params={
+            "n_months": N_MONTHS,
+            "long_short": {"long": long.name, "short": short.name},
+        },
+    )
+
+
+def long_short_cds_fx_iv_brl():
+    return _long_short_pair("BRL", "cds", "iv")
+
+
+def long_short_cds_fx_iv_clp():
+    return _long_short_pair("CLP", "cds", "iv")
+
+
+def long_short_cds_fx_iv_cny():
+    return _long_short_pair("CNY", "cds", "iv")
+
+
+def long_short_cds_fx_iv_cop():
+    return _long_short_pair("COP", "cds", "iv")
+
+
+def long_short_cds_fx_iv_idr():
+    return _long_short_pair("IDR", "cds", "iv")
+
+
+def long_short_cds_fx_iv_mxn():
+    return _long_short_pair("MXN", "cds", "iv")
+
+
+def long_short_cds_fx_iv_rub():
+    return _long_short_pair("RUB", "cds", "iv")
+
+
+def long_short_cds_fx_iv_try():
+    return _long_short_pair("TRY", "cds", "iv")
+
+
+def long_short_cds_fx_iv_zar():
+    return _long_short_pair("ZAR", "cds", "iv")
+
+
+def long_short_cds_fx_bn_brl():
+    return _long_short_pair("BRL", "cds", "bn")
+
+
+def long_short_cds_fx_bn_clp():
+    return _long_short_pair("CLP", "cds", "bn")
+
+
+def long_short_cds_fx_bn_cny():
+    return _long_short_pair("CNY", "cds", "bn")
+
+
+def long_short_cds_fx_bn_cop():
+    return _long_short_pair("COP", "cds", "bn")
+
+
+def long_short_cds_fx_bn_idr():
+    return _long_short_pair("IDR", "cds", "bn")
+
+
+def long_short_cds_fx_bn_mxn():
+    return _long_short_pair("MXN", "cds", "bn")
+
+
+def long_short_cds_fx_bn_rub():
+    return _long_short_pair("RUB", "cds", "bn")
+
+
+def long_short_cds_fx_bn_try():
+    return _long_short_pair("TRY", "cds", "bn")
+
+
+def long_short_cds_fx_bn_zar():
+    return _long_short_pair("ZAR", "cds", "bn")
+
+
 DICT_BACKTESTS = {
     # "TSMOM-CDS-12": tsmom_cds_12m,
     # "TSMOM-CDS-6": tsmom_cds_6m,
@@ -486,6 +587,24 @@ DICT_BACKTESTS = {
     # "L-FX-IV": long_fx_iv,
     # "L-CDS-EW": long_cds_ew,
     # "L-FX-EW": long_fx_ew,
+    # "LS-CDS_FX-IV-BRL": long_short_cds_fx_iv_brl,
+    # "LS-CDS_FX-IV-CLP": long_short_cds_fx_iv_clp,
+    # "LS-CDS_FX-IV-CNY": long_short_cds_fx_iv_cny,
+    # "LS-CDS_FX-IV-COP": long_short_cds_fx_iv_cop,
+    # "LS-CDS_FX-IV-IDR": long_short_cds_fx_iv_idr,
+    # "LS-CDS_FX-IV-MXN": long_short_cds_fx_iv_mxn,
+    # "LS-CDS_FX-IV-RUB": long_short_cds_fx_iv_rub,
+    # "LS-CDS_FX-IV-TRY": long_short_cds_fx_iv_try,
+    # "LS-CDS_FX-IV-ZAR": long_short_cds_fx_iv_zar,
+    "LS-CDS_FX-BN-BRL": long_short_cds_fx_bn_brl,
+    "LS-CDS_FX-BN-CLP": long_short_cds_fx_bn_clp,
+    # "LS-CDS_FX-BN-CNY": long_short_cds_fx_bn_cny,
+    "LS-CDS_FX-BN-COP": long_short_cds_fx_bn_cop,
+    "LS-CDS_FX-BN-IDR": long_short_cds_fx_bn_idr,
+    "LS-CDS_FX-BN-MXN": long_short_cds_fx_bn_mxn,
+    "LS-CDS_FX-BN-RUB": long_short_cds_fx_bn_rub,
+    "LS-CDS_FX-BN-TRY": long_short_cds_fx_bn_try,
+    "LS-CDS_FX-BN-ZAR": long_short_cds_fx_bn_zar,
     "LS-CDS-FX-IV": port_iv_long_short_cds_fx_iv,
     "LS-FX-CDS-IV": port_iv_long_short_fx_cds_iv,
     "LS-CDS-FX-BN-IV": port_iv_long_short_cds_fx_beta_neutro,
