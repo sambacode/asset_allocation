@@ -25,6 +25,16 @@ MIN_DATA_POINTS = 252 * 3
 bt = Backtest(RETURN_WINDOW, MIN_DATA_POINTS)
 
 
+def read_files_backtest(pattern: str) -> pd.DataFrame:
+    list_series = []
+    for file_path in OUTPUT_FOLDER.glob(pattern):
+        s_backtest = pd.read_excel(file_path, index_col=0)["backtest"]
+        s_backtest.name = file_path.stem
+        list_series.append(s_backtest)
+    df_backtest = pd.concat(list_series, axis=1).sort_index()
+    return df_backtest
+
+
 def get_pairs(trackers: pd.DataFrame, ccy: str, long_class: Literal["cds", "fx"]):
     short_class = "fx" if long_class == "cds" else "cds"
     df = trackers.filter(like=ccy).copy().dropna()
@@ -325,19 +335,53 @@ def long_fx_ew(cached_backtest: bool = False):
 
 
 def port_iv_long_short_cds_fx_iv():
-    None
+    WEIGHT_METHOD = "iv"
+    trackers = read_files_backtest("LS-CDS_FX-IV-*.xlsx")
+    return bt.run(
+        trackers=trackers,
+        weight_method=WEIGHT_METHOD,
+        cov_method=COV_METHOD,
+        vol_target=VOL_TARGET,
+        details=True,
+    )
 
 
 def port_iv_long_short_fx_cds_iv():
-    None
+    WEIGHT_METHOD = "iv"
+    trackers = read_files_backtest("LS-CDS_FX-IV-*.xlsx")
+    trackers = trackers**-1 * 10000
+    return bt.run(
+        trackers=trackers,
+        weight_method=WEIGHT_METHOD,
+        cov_method=COV_METHOD,
+        vol_target=VOL_TARGET,
+        details=True,
+    )
 
 
 def port_iv_long_short_cds_fx_beta_neutro():
-    None
+    WEIGHT_METHOD = "iv"
+    trackers = read_files_backtest("LS-CDS_FX-BN-*.xlsx")
+    return bt.run(
+        trackers=trackers,
+        weight_method=WEIGHT_METHOD,
+        cov_method=COV_METHOD,
+        vol_target=VOL_TARGET,
+        details=True,
+    )
 
 
 def port_iv_long_short_fx_cds_beta_neutro():
-    None
+    WEIGHT_METHOD = "iv"
+    trackers = read_files_backtest("LS-CDS_FX-BN-*.xlsx")
+    trackers = trackers**-1 * 10000
+    return bt.run(
+        trackers=trackers,
+        weight_method=WEIGHT_METHOD,
+        cov_method=COV_METHOD,
+        vol_target=VOL_TARGET,
+        details=True,
+    )
 
 
 def port_iv_neutro_long_basket_iv_cds_short_basket_iv_fx():
@@ -589,22 +633,22 @@ DICT_BACKTESTS = {
     # "L-FX-EW": long_fx_ew,
     # "LS-CDS_FX-IV-BRL": long_short_cds_fx_iv_brl,
     # "LS-CDS_FX-IV-CLP": long_short_cds_fx_iv_clp,
-    # "LS-CDS_FX-IV-CNY": long_short_cds_fx_iv_cny,
+    # "LS-CDS_FX-IV-CNY": long_short_cds_fx_iv_cny, # TODO: export
     # "LS-CDS_FX-IV-COP": long_short_cds_fx_iv_cop,
     # "LS-CDS_FX-IV-IDR": long_short_cds_fx_iv_idr,
     # "LS-CDS_FX-IV-MXN": long_short_cds_fx_iv_mxn,
     # "LS-CDS_FX-IV-RUB": long_short_cds_fx_iv_rub,
     # "LS-CDS_FX-IV-TRY": long_short_cds_fx_iv_try,
     # "LS-CDS_FX-IV-ZAR": long_short_cds_fx_iv_zar,
-    "LS-CDS_FX-BN-BRL": long_short_cds_fx_bn_brl,
-    "LS-CDS_FX-BN-CLP": long_short_cds_fx_bn_clp,
-    # "LS-CDS_FX-BN-CNY": long_short_cds_fx_bn_cny,
-    "LS-CDS_FX-BN-COP": long_short_cds_fx_bn_cop,
-    "LS-CDS_FX-BN-IDR": long_short_cds_fx_bn_idr,
-    "LS-CDS_FX-BN-MXN": long_short_cds_fx_bn_mxn,
-    "LS-CDS_FX-BN-RUB": long_short_cds_fx_bn_rub,
-    "LS-CDS_FX-BN-TRY": long_short_cds_fx_bn_try,
-    "LS-CDS_FX-BN-ZAR": long_short_cds_fx_bn_zar,
+    # "LS-CDS_FX-BN-BRL": long_short_cds_fx_bn_brl,
+    # "LS-CDS_FX-BN-CLP": long_short_cds_fx_bn_clp,
+    ## "LS-CDS_FX-BN-CNY": long_short_cds_fx_bn_cny, # TODO: export
+    # "LS-CDS_FX-BN-COP": long_short_cds_fx_bn_cop,
+    # "LS-CDS_FX-BN-IDR": long_short_cds_fx_bn_idr,
+    # "LS-CDS_FX-BN-MXN": long_short_cds_fx_bn_mxn,
+    # "LS-CDS_FX-BN-RUB": long_short_cds_fx_bn_rub,
+    # "LS-CDS_FX-BN-TRY": long_short_cds_fx_bn_try,
+    # "LS-CDS_FX-BN-ZAR": long_short_cds_fx_bn_zar,
     "LS-CDS-FX-IV": port_iv_long_short_cds_fx_iv,
     "LS-FX-CDS-IV": port_iv_long_short_fx_cds_iv,
     "LS-CDS-FX-BN-IV": port_iv_long_short_cds_fx_beta_neutro,

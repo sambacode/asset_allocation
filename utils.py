@@ -382,7 +382,7 @@ def calc_weight(
         return calculate_factor_weight(method, alpha=alpha)
     elif method == "bn":
         long = log_returns[long_short["long"]].iloc[-21 * n_months :].rolling(21).sum()
-        short = log_returns[long_short["long"]].iloc[-21 * n_months :].rolling(21).sum()
+        short = log_returns[long_short["short"]].iloc[-21 * n_months :].rolling(21).sum()
         return pd.Series(
             {
                 long.name: 1,
