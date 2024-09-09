@@ -21,7 +21,7 @@ trackers = pd.concat([fx, cds], axis=1, join="outer").fillna(method="ffill", lim
 COV_METHOD = "expanding"
 VOL_TARGET = 0.1
 RETURN_WINDOW = 21
-MIN_DATA_POINTS = 252 * 3
+MIN_DATA_POINTS = 100
 bt = Backtest(RETURN_WINDOW, MIN_DATA_POINTS)
 
 
