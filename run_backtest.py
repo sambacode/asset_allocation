@@ -18,7 +18,8 @@ cds = load_trackers(EM_CDS_TRACKER_DICT).rename(columns=lambda col: col + "_cds"
 trackers = pd.concat([fx, cds], axis=1, join="outer").fillna(method="ffill", limit=5)
 
 
-COV_METHOD = "expanding"
+COV_METHOD = "ewm"
+COV_PARAMS = {"halflife": 252}
 VOL_TARGET = 0.1
 RETURN_WINDOW = 21
 MIN_DATA_POINTS = 100
@@ -63,6 +64,7 @@ def tsmom_cds_12m():
         trackers=filter_class(trackers, CLASS),
         weight_method=WEIGHT_METHOD,
         cov_method=COV_METHOD,
+        cov_params=COV_PARAMS,
         vol_target=VOL_TARGET,
         details=True,
         factor_params={"n_months": N_MONTHS},
@@ -78,6 +80,7 @@ def tsmom_cds_6m():
         trackers=filter_class(trackers, CLASS),
         weight_method=WEIGHT_METHOD,
         cov_method=COV_METHOD,
+        cov_params=COV_PARAMS,
         vol_target=VOL_TARGET,
         details=True,
         factor_params={"n_months": N_MONTHS},
@@ -93,6 +96,23 @@ def tsmom_cds_3m():
         trackers=filter_class(trackers, CLASS),
         weight_method=WEIGHT_METHOD,
         cov_method=COV_METHOD,
+        cov_params=COV_PARAMS,
+        vol_target=VOL_TARGET,
+        details=True,
+        factor_params={"n_months": N_MONTHS},
+    )
+
+
+def tsmom_cds_1m():
+    CLASS = "cds"
+    WEIGHT_METHOD = "tsmom"
+    N_MONTHS = 1
+
+    return bt.run(
+        trackers=filter_class(trackers, CLASS),
+        weight_method=WEIGHT_METHOD,
+        cov_method=COV_METHOD,
+        cov_params=COV_PARAMS,
         vol_target=VOL_TARGET,
         details=True,
         factor_params={"n_months": N_MONTHS},
@@ -108,6 +128,7 @@ def tsmom_fx_12m():
         trackers=filter_class(trackers, CLASS),
         weight_method=WEIGHT_METHOD,
         cov_method=COV_METHOD,
+        cov_params=COV_PARAMS,
         vol_target=VOL_TARGET,
         details=True,
         factor_params={"n_months": N_MONTHS},
@@ -123,6 +144,7 @@ def tsmom_fx_6m():
         trackers=filter_class(trackers, CLASS),
         weight_method=WEIGHT_METHOD,
         cov_method=COV_METHOD,
+        cov_params=COV_PARAMS,
         vol_target=VOL_TARGET,
         details=True,
         factor_params={"n_months": N_MONTHS},
@@ -138,6 +160,23 @@ def tsmom_fx_3m():
         trackers=filter_class(trackers, CLASS),
         weight_method=WEIGHT_METHOD,
         cov_method=COV_METHOD,
+        cov_params=COV_PARAMS,
+        vol_target=VOL_TARGET,
+        details=True,
+        factor_params={"n_months": N_MONTHS},
+    )
+
+
+def tsmom_fx_1m():
+    CLASS = "fx"
+    WEIGHT_METHOD = "tsmom"
+    N_MONTHS = 1
+
+    return bt.run(
+        trackers=filter_class(trackers, CLASS),
+        weight_method=WEIGHT_METHOD,
+        cov_method=COV_METHOD,
+        cov_params=COV_PARAMS,
         vol_target=VOL_TARGET,
         details=True,
         factor_params={"n_months": N_MONTHS},
@@ -153,6 +192,7 @@ def tsmom_12m():
         trackers=filter_class(trackers, CLASS),
         weight_method=WEIGHT_METHOD,
         cov_method=COV_METHOD,
+        cov_params=COV_PARAMS,
         vol_target=VOL_TARGET,
         details=True,
         factor_params={"n_months": N_MONTHS},
@@ -162,12 +202,13 @@ def tsmom_12m():
 def tsmom_6m():
     CLASS = None
     WEIGHT_METHOD = "tsmom"
-    N_MONTHS = 12
+    N_MONTHS = 6
 
     return bt.run(
         trackers=filter_class(trackers, CLASS),
         weight_method=WEIGHT_METHOD,
         cov_method=COV_METHOD,
+        cov_params=COV_PARAMS,
         vol_target=VOL_TARGET,
         details=True,
         factor_params={"n_months": N_MONTHS},
@@ -183,6 +224,215 @@ def tsmom_3m():
         trackers=filter_class(trackers, CLASS),
         weight_method=WEIGHT_METHOD,
         cov_method=COV_METHOD,
+        cov_params=COV_PARAMS,
+        vol_target=VOL_TARGET,
+        details=True,
+        factor_params={"n_months": N_MONTHS},
+    )
+
+
+def tsmom_1m():
+    CLASS = None
+    WEIGHT_METHOD = "tsmom"
+    N_MONTHS = 1
+
+    return bt.run(
+        trackers=filter_class(trackers, CLASS),
+        weight_method=WEIGHT_METHOD,
+        cov_method=COV_METHOD,
+        cov_params=COV_PARAMS,
+        vol_target=VOL_TARGET,
+        details=True,
+        factor_params={"n_months": N_MONTHS},
+    )
+
+
+def xsmom_fx_12m():
+    CLASS = "fx"
+    WEIGHT_METHOD = "xsmom"
+    N_MONTHS = 12
+
+    return bt.run(
+        trackers=filter_class(trackers, CLASS),
+        weight_method=WEIGHT_METHOD,
+        cov_method=COV_METHOD,
+        cov_params=COV_PARAMS,
+        vol_target=VOL_TARGET,
+        details=True,
+        factor_params={"n_months": N_MONTHS},
+    )
+
+
+def xsmom_cds_12m():
+    CLASS = "cds"
+    WEIGHT_METHOD = "xsmom"
+    N_MONTHS = 12
+
+    return bt.run(
+        trackers=filter_class(trackers, CLASS),
+        weight_method=WEIGHT_METHOD,
+        cov_method=COV_METHOD,
+        cov_params=COV_PARAMS,
+        vol_target=VOL_TARGET,
+        details=True,
+        factor_params={"n_months": N_MONTHS},
+    )
+
+
+def xsmom_12m():
+    CLASS = None
+    WEIGHT_METHOD = "xsmom"
+    N_MONTHS = 12
+
+    return bt.run(
+        trackers=filter_class(trackers, CLASS),
+        weight_method=WEIGHT_METHOD,
+        cov_method=COV_METHOD,
+        cov_params=COV_PARAMS,
+        vol_target=VOL_TARGET,
+        details=True,
+        factor_params={"n_months": N_MONTHS},
+    )
+
+
+def xsmom_fx_6m():
+    CLASS = "fx"
+    WEIGHT_METHOD = "xsmom"
+    N_MONTHS = 6
+
+    return bt.run(
+        trackers=filter_class(trackers, CLASS),
+        weight_method=WEIGHT_METHOD,
+        cov_method=COV_METHOD,
+        cov_params=COV_PARAMS,
+        vol_target=VOL_TARGET,
+        details=True,
+        factor_params={"n_months": N_MONTHS},
+    )
+
+
+def xsmom_cds_6m():
+    CLASS = "cds"
+    WEIGHT_METHOD = "xsmom"
+    N_MONTHS = 6
+
+    return bt.run(
+        trackers=filter_class(trackers, CLASS),
+        weight_method=WEIGHT_METHOD,
+        cov_method=COV_METHOD,
+        cov_params=COV_PARAMS,
+        vol_target=VOL_TARGET,
+        details=True,
+        factor_params={"n_months": N_MONTHS},
+    )
+
+
+def xsmom_6m():
+    CLASS = None
+    WEIGHT_METHOD = "xsmom"
+    N_MONTHS = 6
+
+    return bt.run(
+        trackers=filter_class(trackers, CLASS),
+        weight_method=WEIGHT_METHOD,
+        cov_method=COV_METHOD,
+        cov_params=COV_PARAMS,
+        vol_target=VOL_TARGET,
+        details=True,
+        factor_params={"n_months": N_MONTHS},
+    )
+
+
+def xsmom_fx_3m():
+    CLASS = "fx"
+    WEIGHT_METHOD = "xsmom"
+    N_MONTHS = 3
+
+    return bt.run(
+        trackers=filter_class(trackers, CLASS),
+        weight_method=WEIGHT_METHOD,
+        cov_method=COV_METHOD,
+        cov_params=COV_PARAMS,
+        vol_target=VOL_TARGET,
+        details=True,
+        factor_params={"n_months": N_MONTHS},
+    )
+
+
+def xsmom_cds_3m():
+    CLASS = "cds"
+    WEIGHT_METHOD = "xsmom"
+    N_MONTHS = 3
+
+    return bt.run(
+        trackers=filter_class(trackers, CLASS),
+        weight_method=WEIGHT_METHOD,
+        cov_method=COV_METHOD,
+        cov_params=COV_PARAMS,
+        vol_target=VOL_TARGET,
+        details=True,
+        factor_params={"n_months": N_MONTHS},
+    )
+
+
+def xsmom_3m():
+    CLASS = None
+    WEIGHT_METHOD = "xsmom"
+    N_MONTHS = 3
+
+    return bt.run(
+        trackers=filter_class(trackers, CLASS),
+        weight_method=WEIGHT_METHOD,
+        cov_method=COV_METHOD,
+        cov_params=COV_PARAMS,
+        vol_target=VOL_TARGET,
+        details=True,
+        factor_params={"n_months": N_MONTHS},
+    )
+
+
+def xsmom_fx_1m():
+    CLASS = "fx"
+    WEIGHT_METHOD = "xsmom"
+    N_MONTHS = 1
+
+    return bt.run(
+        trackers=filter_class(trackers, CLASS),
+        weight_method=WEIGHT_METHOD,
+        cov_method=COV_METHOD,
+        cov_params=COV_PARAMS,
+        vol_target=VOL_TARGET,
+        details=True,
+        factor_params={"n_months": N_MONTHS},
+    )
+
+
+def xsmom_cds_1m():
+    CLASS = "cds"
+    WEIGHT_METHOD = "xsmom"
+    N_MONTHS = 1
+
+    return bt.run(
+        trackers=filter_class(trackers, CLASS),
+        weight_method=WEIGHT_METHOD,
+        cov_method=COV_METHOD,
+        cov_params=COV_PARAMS,
+        vol_target=VOL_TARGET,
+        details=True,
+        factor_params={"n_months": N_MONTHS},
+    )
+
+
+def xsmom_1m():
+    CLASS = None
+    WEIGHT_METHOD = "xsmom"
+    N_MONTHS = 1
+
+    return bt.run(
+        trackers=filter_class(trackers, CLASS),
+        weight_method=WEIGHT_METHOD,
+        cov_method=COV_METHOD,
+        cov_params=COV_PARAMS,
         vol_target=VOL_TARGET,
         details=True,
         factor_params={"n_months": N_MONTHS},
@@ -201,6 +451,7 @@ def value_fx_paired():
         trackers=trackers.loc["2008-08-07":],
         weight_method=WEIGHT_METHOD,
         cov_method=COV_METHOD,
+        cov_params=COV_PARAMS,
         vol_target=VOL_TARGET,
         details=True,
         factor_params={"endog": CLASS},
@@ -215,54 +466,10 @@ def value_cds_paired():
         trackers=trackers.loc["2008-08-07":],
         weight_method=WEIGHT_METHOD,
         cov_method=COV_METHOD,
+        cov_params=COV_PARAMS,
         vol_target=VOL_TARGET,
         details=True,
         factor_params={"endog": CLASS},
-    )
-
-
-def xsmom_fx():
-    CLASS = "fx"
-    WEIGHT_METHOD = "xsmom"
-    N_MONTHS = 12
-
-    return bt.run(
-        trackers=filter_class(trackers, CLASS),
-        weight_method=WEIGHT_METHOD,
-        cov_method=COV_METHOD,
-        vol_target=VOL_TARGET,
-        details=True,
-        factor_params={"n_months": N_MONTHS},
-    )
-
-
-def xsmom_cds():
-    CLASS = "cds"
-    WEIGHT_METHOD = "xsmom"
-    N_MONTHS = 12
-
-    return bt.run(
-        trackers=filter_class(trackers, CLASS),
-        weight_method=WEIGHT_METHOD,
-        cov_method=COV_METHOD,
-        vol_target=VOL_TARGET,
-        details=True,
-        factor_params={"n_months": N_MONTHS},
-    )
-
-
-def xsmom():
-    CLASS = None
-    WEIGHT_METHOD = "xsmom"
-    N_MONTHS = 12
-
-    return bt.run(
-        trackers=filter_class(trackers, CLASS),
-        weight_method=WEIGHT_METHOD,
-        cov_method=COV_METHOD,
-        vol_target=VOL_TARGET,
-        details=True,
-        factor_params={"n_months": N_MONTHS},
     )
 
 
@@ -278,6 +485,7 @@ def long_cds_iv(cached_backtest: bool = False):
         trackers=filter_class(trackers, CLASS),
         weight_method=WEIGHT_METHOD,
         cov_method=COV_METHOD,
+        cov_params=COV_PARAMS,
         vol_target=VOL_TARGET,
         details=True,
     )
@@ -295,6 +503,7 @@ def long_fx_iv(cached_backtest: bool = False):
         trackers=filter_class(trackers, CLASS),
         weight_method=WEIGHT_METHOD,
         cov_method=COV_METHOD,
+        cov_params=COV_PARAMS,
         vol_target=VOL_TARGET,
         details=True,
     )
@@ -312,6 +521,7 @@ def long_cds_ew(cached_backtest: bool = False):
         trackers=filter_class(trackers, CLASS),
         weight_method=WEIGHT_METHOD,
         cov_method=COV_METHOD,
+        cov_params=COV_PARAMS,
         vol_target=VOL_TARGET,
         details=True,
     )
@@ -329,6 +539,7 @@ def long_fx_ew(cached_backtest: bool = False):
         trackers=filter_class(trackers, CLASS),
         weight_method=WEIGHT_METHOD,
         cov_method=COV_METHOD,
+        cov_params=COV_PARAMS,
         vol_target=VOL_TARGET,
         details=True,
     )
@@ -341,6 +552,7 @@ def port_iv_long_short_cds_fx_iv():
         trackers=trackers,
         weight_method=WEIGHT_METHOD,
         cov_method=COV_METHOD,
+        cov_params=COV_PARAMS,
         vol_target=VOL_TARGET,
         details=True,
     )
@@ -354,6 +566,7 @@ def port_iv_long_short_fx_cds_iv():
         trackers=trackers,
         weight_method=WEIGHT_METHOD,
         cov_method=COV_METHOD,
+        cov_params=COV_PARAMS,
         vol_target=VOL_TARGET,
         details=True,
     )
@@ -366,6 +579,7 @@ def port_iv_long_short_cds_fx_beta_neutro():
         trackers=trackers,
         weight_method=WEIGHT_METHOD,
         cov_method=COV_METHOD,
+        cov_params=COV_PARAMS,
         vol_target=VOL_TARGET,
         details=True,
     )
@@ -379,6 +593,7 @@ def port_iv_long_short_fx_cds_beta_neutro():
         trackers=trackers,
         weight_method=WEIGHT_METHOD,
         cov_method=COV_METHOD,
+        cov_params=COV_PARAMS,
         vol_target=VOL_TARGET,
         details=True,
     )
@@ -400,6 +615,7 @@ def port_iv_neutro_long_basket_iv_cds_short_basket_iv_fx():
         trackers=trackers,
         weight_method=WEIGHT_METHOD,
         cov_method=COV_METHOD,
+        cov_params=COV_PARAMS,
         vol_target=VOL_TARGET,
         details=True,
     )
@@ -421,6 +637,7 @@ def port_iv_neutro_long_basket_iv_fx_short_basket_iv_cds():
         trackers=trackers,
         weight_method=WEIGHT_METHOD,
         cov_method=COV_METHOD,
+        cov_params=COV_PARAMS,
         vol_target=VOL_TARGET,
         details=True,
     )
@@ -442,6 +659,7 @@ def port_iv_neutro_long_basket_ew_cds_short_basket_ew_fx():
         trackers=trackers,
         weight_method=WEIGHT_METHOD,
         cov_method=COV_METHOD,
+        cov_params=COV_PARAMS,
         vol_target=VOL_TARGET,
         details=True,
     )
@@ -463,6 +681,7 @@ def port_iv_neutro_long_basket_ew_fx_short_basket_ew_cds():
         trackers=trackers,
         weight_method=WEIGHT_METHOD,
         cov_method=COV_METHOD,
+        cov_params=COV_PARAMS,
         vol_target=VOL_TARGET,
         details=True,
     )
@@ -485,6 +704,7 @@ def port_beta_neutro_long_basket_iv_cds_short_basket_iv_fx():
         trackers=trackers,
         weight_method=WEIGHT_METHOD,
         cov_method=COV_METHOD,
+        cov_params=COV_PARAMS,
         vol_target=VOL_TARGET,
         details=True,
         factor_params={
@@ -511,6 +731,7 @@ def port_beta_neutro_long_basket_iv_fx_short_basket_iv_cds():
         trackers=trackers,
         weight_method=WEIGHT_METHOD,
         cov_method=COV_METHOD,
+        cov_params=COV_PARAMS,
         vol_target=VOL_TARGET,
         details=True,
         factor_params={
@@ -530,6 +751,7 @@ def _long_short_pair(
         trackers=pd.concat([long, short], axis=1),
         weight_method=weight_method,
         cov_method=COV_METHOD,
+        cov_params=COV_PARAMS,
         vol_target=VOL_TARGET,
         details=True,
         factor_params={
@@ -615,25 +837,37 @@ DICT_BACKTESTS = {
     "TSMOM-CDS-12": tsmom_cds_12m,
     "TSMOM-CDS-6": tsmom_cds_6m,
     "TSMOM-CDS-3": tsmom_cds_3m,
+    "TSMOM-CDS-1": tsmom_cds_1m,
     "TSMOM-FX-12": tsmom_fx_12m,
     "TSMOM-FX-6": tsmom_fx_6m,
     "TSMOM-FX-3": tsmom_fx_3m,
+    "TSMOM-FX-1": tsmom_fx_1m,
     "TSMOM-12": tsmom_12m,
     "TSMOM-6": tsmom_6m,
     "TSMOM-3": tsmom_3m,
+    "TSMOM-1": tsmom_1m,
+    "XSMOM-FX-12": xsmom_fx_12m,
+    "XSMOM-CDS-12": xsmom_cds_12m,
+    "XSMOM-12": xsmom_12m,
+    "XSMOM-FX-6": xsmom_fx_6m,
+    "XSMOM-CDS-6": xsmom_cds_6m,
+    "XSMOM-6": xsmom_6m,
+    "XSMOM-FX-3": xsmom_fx_3m,
+    "XSMOM-CDS-3": xsmom_cds_3m,
+    "XSMOM-3": xsmom_3m,
+    "XSMOM-FX-1": xsmom_fx_1m,
+    "XSMOM-CDS-1": xsmom_cds_1m,
+    "XSMOM-1": xsmom_1m,
     "VALUE-FX-PPP": value_fx_ppp,
     "VALUE-FX-PAIRED": value_fx_paired,
     "VALUE-CDS-PAIRED": value_cds_paired,
-    "XSMOM-FX": xsmom_fx,
-    "XSMOM-CDS": xsmom_cds,
-    "XSMOM": xsmom,
     "L-CDS-IV": long_cds_iv,
     "L-FX-IV": long_fx_iv,
     "L-CDS-EW": long_cds_ew,
     "L-FX-EW": long_fx_ew,
     "LS-CDS_FX-IV-BRL": long_short_cds_fx_iv_brl,
     "LS-CDS_FX-IV-CLP": long_short_cds_fx_iv_clp,
-    "LS-CDS_FX-IV-CNY": long_short_cds_fx_iv_cny, # TODO: export
+    "LS-CDS_FX-IV-CNY": long_short_cds_fx_iv_cny,  # TODO: export
     "LS-CDS_FX-IV-COP": long_short_cds_fx_iv_cop,
     "LS-CDS_FX-IV-IDR": long_short_cds_fx_iv_idr,
     "LS-CDS_FX-IV-MXN": long_short_cds_fx_iv_mxn,
@@ -642,7 +876,7 @@ DICT_BACKTESTS = {
     "LS-CDS_FX-IV-ZAR": long_short_cds_fx_iv_zar,
     "LS-CDS_FX-BN-BRL": long_short_cds_fx_bn_brl,
     "LS-CDS_FX-BN-CLP": long_short_cds_fx_bn_clp,
-    "LS-CDS_FX-BN-CNY": long_short_cds_fx_bn_cny, # TODO: export
+    "LS-CDS_FX-BN-CNY": long_short_cds_fx_bn_cny,  # TODO: export
     "LS-CDS_FX-BN-COP": long_short_cds_fx_bn_cop,
     "LS-CDS_FX-BN-IDR": long_short_cds_fx_bn_idr,
     "LS-CDS_FX-BN-MXN": long_short_cds_fx_bn_mxn,
