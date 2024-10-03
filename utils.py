@@ -417,6 +417,17 @@ DataType = tuple[
 ]
 
 
+def clean_stale_prices(series: pd.Series, data_points: int = 10) -> pd.Series:
+    series = series.copy()
+    groups = (series.diff(1) != 0).fillna(True).cumsum()
+    grouped = series.groupby(groups).count()
+    stale_groups = grouped[grouped >= data_points].index
+    stale_dates = [
+        dt for group in stale_groups for dt in groups[groups == group].index[1:-1]
+    ]
+    return series.drop(stale_dates)
+
+
 class Backtest:
     min_data_points = 252 * 3
     r_wind = 21
@@ -433,7 +444,7 @@ class Backtest:
         self.trackers = trackers
 
     def _prepare_data(self, trackers: pd.DataFrame) -> DataType:
-        trackers = trackers.fillna(method="ffill").copy()
+        trackers = trackers.fillna(method="ffill", limit=5).copy()
         log_returns = np.log(trackers).diff(self.r_wind).dropna(how="all")
         t_0, t_1 = log_returns.iloc[self.min_data_points :].index[:2]
         backtest = pd.Series(index=log_returns[t_0:].index, dtype="float64")
