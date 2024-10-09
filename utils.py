@@ -333,13 +333,13 @@ def equal_weight(vols: pd.Series, **_) -> pd.Series:
 
 
 def calculate_alphas_fx_cds_pairs(
-    endog: Literal["fx", "cds"], daily_log_returns: pd.DataFrame
+    endog: Literal["fx", "cds"], daily_log_returns: pd.DataFrame, n_months: int = 12
 ) -> pd.Series:
     code = pd.Series([col[:3] for col in daily_log_returns.columns])
     code_unique = code[code.duplicated(keep="first")].to_list()
     pairs = [(f"{code}_fx", f"{code}_cds") for code in code_unique]
-    returns = daily_log_returns.rolling(252).sum().iloc[-1]
-    cov = calc_covariance(daily_log_returns, "rolling", window=252)
+    returns = daily_log_returns.rolling(n_months * 21).sum().iloc[-1]
+    cov = calc_covariance(daily_log_returns, "rolling", window=n_months * 21)
     vols = cov_to_vols(cov)
     betas = pd.Series(
         {(fx, cds): cov.loc[fx, cds] / (vols[cds] ** 2) for fx, cds in pairs}
@@ -378,11 +378,13 @@ def calc_weight(
     #     ppp =
     #     return calculate_factor_weight(method, vols=vols, ppp=ppp)
     elif method == "value_paired":
-        alpha = calculate_alphas_fx_cds_pairs(endog, log_returns)
+        alpha = calculate_alphas_fx_cds_pairs(endog, log_returns, n_months)
         return calculate_factor_weight(method, alpha=alpha)
     elif method == "bn":
         long = log_returns[long_short["long"]].iloc[-21 * n_months :].rolling(21).sum()
-        short = log_returns[long_short["short"]].iloc[-21 * n_months :].rolling(21).sum()
+        short = (
+            log_returns[long_short["short"]].iloc[-21 * n_months :].rolling(21).sum()
+        )
         return pd.Series(
             {
                 long.name: 1,

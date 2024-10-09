@@ -443,9 +443,10 @@ def value_fx_ppp():
     None
 
 
-def value_fx_paired():
+def value_fx_paired_12m():
     CLASS = "fx"
     WEIGHT_METHOD = "value_paired"
+    N_MONTHS = 12
 
     return bt.run(
         trackers=trackers.loc["2008-08-07":],
@@ -454,13 +455,14 @@ def value_fx_paired():
         cov_params=COV_PARAMS,
         vol_target=VOL_TARGET,
         details=True,
-        factor_params={"endog": CLASS},
+        factor_params={"n_months": N_MONTHS, "endog": CLASS},
     )
 
 
-def value_cds_paired():
+def value_cds_paired_12m():
     CLASS = "cds"
     WEIGHT_METHOD = "value_paired"
+    N_MONTHS = 12
 
     return bt.run(
         trackers=trackers.loc["2008-08-07":],
@@ -469,7 +471,103 @@ def value_cds_paired():
         cov_params=COV_PARAMS,
         vol_target=VOL_TARGET,
         details=True,
-        factor_params={"endog": CLASS},
+        factor_params={"n_months": N_MONTHS, "endog": CLASS},
+    )
+
+
+def value_fx_paired_6m():
+    CLASS = "fx"
+    WEIGHT_METHOD = "value_paired"
+    N_MONTHS = 6
+
+    return bt.run(
+        trackers=trackers.loc["2008-08-07":],
+        weight_method=WEIGHT_METHOD,
+        cov_method=COV_METHOD,
+        cov_params=COV_PARAMS,
+        vol_target=VOL_TARGET,
+        details=True,
+        factor_params={"n_months": N_MONTHS, "endog": CLASS},
+    )
+
+
+def value_cds_paired_6m():
+    CLASS = "cds"
+    WEIGHT_METHOD = "value_paired"
+    N_MONTHS = 6
+
+    return bt.run(
+        trackers=trackers.loc["2008-08-07":],
+        weight_method=WEIGHT_METHOD,
+        cov_method=COV_METHOD,
+        cov_params=COV_PARAMS,
+        vol_target=VOL_TARGET,
+        details=True,
+        factor_params={"n_months": N_MONTHS, "endog": CLASS},
+    )
+
+
+def value_fx_paired_3m():
+    CLASS = "fx"
+    WEIGHT_METHOD = "value_paired"
+    N_MONTHS = 3
+
+    return bt.run(
+        trackers=trackers.loc["2008-08-07":],
+        weight_method=WEIGHT_METHOD,
+        cov_method=COV_METHOD,
+        cov_params=COV_PARAMS,
+        vol_target=VOL_TARGET,
+        details=True,
+        factor_params={"n_months": N_MONTHS, "endog": CLASS},
+    )
+
+
+def value_cds_paired_3m():
+    CLASS = "cds"
+    WEIGHT_METHOD = "value_paired"
+    N_MONTHS = 3
+
+    return bt.run(
+        trackers=trackers.loc["2008-08-07":],
+        weight_method=WEIGHT_METHOD,
+        cov_method=COV_METHOD,
+        cov_params=COV_PARAMS,
+        vol_target=VOL_TARGET,
+        details=True,
+        factor_params={"n_months": N_MONTHS, "endog": CLASS},
+    )
+
+
+def value_fx_paired_1m():
+    CLASS = "fx"
+    WEIGHT_METHOD = "value_paired"
+    N_MONTHS = 1
+
+    return bt.run(
+        trackers=trackers.loc["2008-08-07":],
+        weight_method=WEIGHT_METHOD,
+        cov_method=COV_METHOD,
+        cov_params=COV_PARAMS,
+        vol_target=VOL_TARGET,
+        details=True,
+        factor_params={"n_months": N_MONTHS, "endog": CLASS},
+    )
+
+
+def value_cds_paired_1m():
+    CLASS = "cds"
+    WEIGHT_METHOD = "value_paired"
+    N_MONTHS = 1
+
+    return bt.run(
+        trackers=trackers.loc["2008-08-07":],
+        weight_method=WEIGHT_METHOD,
+        cov_method=COV_METHOD,
+        cov_params=COV_PARAMS,
+        vol_target=VOL_TARGET,
+        details=True,
+        factor_params={"n_months": N_MONTHS, "endog": CLASS},
     )
 
 
@@ -895,14 +993,20 @@ DICT_BACKTESTS = {
     # "XSMOM-CDS-1": xsmom_cds_1m,
     # "XSMOM-1": xsmom_1m,
     # "VALUE-FX-PPP": value_fx_ppp,
-    # "VALUE-FX-PAIRED": value_fx_paired,
-    # "VALUE-CDS-PAIRED": value_cds_paired,
+    # "VALUE-FX-PAIRED-12": value_fx_paired_12m,
+    # "VALUE-CDS-PAIRED-12": value_cds_paired_12m,
+    # "VALUE-FX-PAIRED-6": value_fx_paired_6m,
+    # "VALUE-CDS-PAIRED-6": value_cds_paired_6m,
+    # "VALUE-FX-PAIRED-3": value_fx_paired_3m,
+    # "VALUE-CDS-PAIRED-3": value_cds_paired_3m,
+    # "VALUE-FX-PAIRED-1": value_fx_paired_1m,
+    # "VALUE-CDS-PAIRED-1": value_cds_paired_1m,
     # "L-CDS-IV": long_cds_iv,
     # "L-FX-IV": long_fx_iv,
     # "L-CDS-EW": long_cds_ew,
     # "L-FX-EW": long_fx_ew,
-    "L-IV": long_iv,
-    "L-EW": long_ew,
+    # "L-IV": long_iv,
+    # "L-EW": long_ew,
     # "LS-CDS_FX-IV-BRL": long_short_cds_fx_iv_brl,
     # "LS-CDS_FX-IV-CLP": long_short_cds_fx_iv_clp,
     # "LS-CDS_FX-IV-CNY": long_short_cds_fx_iv_cny,  # TODO: export
