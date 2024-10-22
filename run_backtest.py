@@ -4,7 +4,7 @@ from typing import Literal, Optional
 
 import pandas as pd
 from entities import EM_CDS_TRACKER_DICT, FX_TRACKER_DICT
-from utils import Backtest, load_trackers
+from utils import Backtest, load_trackers, clean_stale_prices
 
 logging.getLogger(__name__)
 
@@ -15,7 +15,15 @@ OUTPUT_FOLDER = Path(
 
 fx = load_trackers(FX_TRACKER_DICT).rename(columns=lambda col: col + "_fx")
 cds = load_trackers(EM_CDS_TRACKER_DICT).rename(columns=lambda col: col + "_cds")
-trackers = pd.concat([fx, cds], axis=1, join="outer").fillna(method="ffill", limit=5)
+
+trackers = pd.concat(
+    [fx, cds],
+    axis=1,
+).fillna(method="ffill")
+trackers = pd.concat(
+    [clean_stale_prices(trackers[col].copy()) for col in trackers], axis=1
+)
+trackers = trackers[:"2024-09-30"]
 
 
 COV_METHOD = "ewm"
@@ -443,7 +451,7 @@ def value_fx_ppp():
     None
 
 
-def value_fx_paired_12m():
+def value_fx_12m():
     CLASS = "fx"
     WEIGHT_METHOD = "value_paired"
     N_MONTHS = 12
@@ -459,7 +467,7 @@ def value_fx_paired_12m():
     )
 
 
-def value_cds_paired_12m():
+def value_cds_12m():
     CLASS = "cds"
     WEIGHT_METHOD = "value_paired"
     N_MONTHS = 12
@@ -475,7 +483,7 @@ def value_cds_paired_12m():
     )
 
 
-def value_fx_paired_6m():
+def value_fx_6m():
     CLASS = "fx"
     WEIGHT_METHOD = "value_paired"
     N_MONTHS = 6
@@ -491,7 +499,7 @@ def value_fx_paired_6m():
     )
 
 
-def value_cds_paired_6m():
+def value_cds_6m():
     CLASS = "cds"
     WEIGHT_METHOD = "value_paired"
     N_MONTHS = 6
@@ -507,7 +515,7 @@ def value_cds_paired_6m():
     )
 
 
-def value_fx_paired_3m():
+def value_fx_3m():
     CLASS = "fx"
     WEIGHT_METHOD = "value_paired"
     N_MONTHS = 3
@@ -523,7 +531,7 @@ def value_fx_paired_3m():
     )
 
 
-def value_cds_paired_3m():
+def value_cds_3m():
     CLASS = "cds"
     WEIGHT_METHOD = "value_paired"
     N_MONTHS = 3
@@ -539,7 +547,7 @@ def value_cds_paired_3m():
     )
 
 
-def value_fx_paired_1m():
+def value_fx_1m():
     CLASS = "fx"
     WEIGHT_METHOD = "value_paired"
     N_MONTHS = 1
@@ -555,7 +563,7 @@ def value_fx_paired_1m():
     )
 
 
-def value_cds_paired_1m():
+def value_cds_1m():
     CLASS = "cds"
     WEIGHT_METHOD = "value_paired"
     N_MONTHS = 1
@@ -968,45 +976,44 @@ def long_short_cds_fx_bn_zar():
 
 
 DICT_BACKTESTS = {
-    # "TSMOM-CDS-12": tsmom_cds_12m,
-    # "TSMOM-CDS-6": tsmom_cds_6m,
-    # "TSMOM-CDS-3": tsmom_cds_3m,
-    # "TSMOM-CDS-1": tsmom_cds_1m,
-    # "TSMOM-FX-12": tsmom_fx_12m,
-    # "TSMOM-FX-6": tsmom_fx_6m,
-    # "TSMOM-FX-3": tsmom_fx_3m,
-    # "TSMOM-FX-1": tsmom_fx_1m,
-    # "TSMOM-12": tsmom_12m,
-    # "TSMOM-6": tsmom_6m,
-    # "TSMOM-3": tsmom_3m,
-    # "TSMOM-1": tsmom_1m,
-    # "XSMOM-FX-12": xsmom_fx_12m,
-    # "XSMOM-CDS-12": xsmom_cds_12m,
-    # "XSMOM-12": xsmom_12m,
-    # "XSMOM-FX-6": xsmom_fx_6m,
-    # "XSMOM-CDS-6": xsmom_cds_6m,
-    # "XSMOM-6": xsmom_6m,
-    # "XSMOM-FX-3": xsmom_fx_3m,
-    # "XSMOM-CDS-3": xsmom_cds_3m,
-    # "XSMOM-3": xsmom_3m,
-    # "XSMOM-FX-1": xsmom_fx_1m,
-    # "XSMOM-CDS-1": xsmom_cds_1m,
-    # "XSMOM-1": xsmom_1m,
-    # "VALUE-FX-PPP": value_fx_ppp,
-    # "VALUE-FX-PAIRED-12": value_fx_paired_12m,
-    # "VALUE-CDS-PAIRED-12": value_cds_paired_12m,
-    # "VALUE-FX-PAIRED-6": value_fx_paired_6m,
-    # "VALUE-CDS-PAIRED-6": value_cds_paired_6m,
-    # "VALUE-FX-PAIRED-3": value_fx_paired_3m,
-    # "VALUE-CDS-PAIRED-3": value_cds_paired_3m,
-    # "VALUE-FX-PAIRED-1": value_fx_paired_1m,
-    # "VALUE-CDS-PAIRED-1": value_cds_paired_1m,
-    # "L-CDS-IV": long_cds_iv,
-    # "L-FX-IV": long_fx_iv,
-    # "L-CDS-EW": long_cds_ew,
-    # "L-FX-EW": long_fx_ew,
-    # "L-IV": long_iv,
-    # "L-EW": long_ew,
+    "TSMOM-CDS-12": tsmom_cds_12m,
+    "TSMOM-CDS-6": tsmom_cds_6m,
+    "TSMOM-CDS-3": tsmom_cds_3m,
+    "TSMOM-CDS-1": tsmom_cds_1m,
+    "TSMOM-FX-12": tsmom_fx_12m,
+    "TSMOM-FX-6": tsmom_fx_6m,
+    "TSMOM-FX-3": tsmom_fx_3m,
+    "TSMOM-FX-1": tsmom_fx_1m,
+    "TSMOM-12": tsmom_12m,
+    "TSMOM-6": tsmom_6m,
+    "TSMOM-3": tsmom_3m,
+    "TSMOM-1": tsmom_1m,
+    "XSMOM-FX-12": xsmom_fx_12m,
+    "XSMOM-CDS-12": xsmom_cds_12m,
+    "XSMOM-12": xsmom_12m,
+    "XSMOM-FX-6": xsmom_fx_6m,
+    "XSMOM-CDS-6": xsmom_cds_6m,
+    "XSMOM-6": xsmom_6m,
+    "XSMOM-FX-3": xsmom_fx_3m,
+    "XSMOM-CDS-3": xsmom_cds_3m,
+    "XSMOM-3": xsmom_3m,
+    "XSMOM-FX-1": xsmom_fx_1m,
+    "XSMOM-CDS-1": xsmom_cds_1m,
+    "XSMOM-1": xsmom_1m,
+    "VALUE-FX-12": value_fx_12m,
+    "VALUE-CDS-12": value_cds_12m,
+    "VALUE-FX-6": value_fx_6m,
+    "VALUE-CDS-6": value_cds_6m,
+    "VALUE-FX-3": value_fx_3m,
+    "VALUE-CDS-3": value_cds_3m,
+    "VALUE-FX-1": value_fx_1m,
+    "VALUE-CDS-1": value_cds_1m,
+    "L-CDS-IV": long_cds_iv,
+    "L-FX-IV": long_fx_iv,
+    "L-CDS-EW": long_cds_ew,
+    "L-FX-EW": long_fx_ew,
+    "L-IV": long_iv,
+    "L-EW": long_ew,
     # "LS-CDS_FX-IV-BRL": long_short_cds_fx_iv_brl,
     # "LS-CDS_FX-IV-CLP": long_short_cds_fx_iv_clp,
     # "LS-CDS_FX-IV-CNY": long_short_cds_fx_iv_cny,  # TODO: export
