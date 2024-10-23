@@ -339,7 +339,7 @@ def calculate_alphas_fx_cds_pairs(
     code_unique = code[code.duplicated(keep="first")].to_list()
     pairs = [(f"{code}_fx", f"{code}_cds") for code in code_unique]
     returns = daily_log_returns.rolling(n_months * 21).sum().iloc[-1]
-    cov = calc_covariance(daily_log_returns, "rolling", window=n_months * 21)
+    cov = calc_covariance(daily_log_returns, "ewm", halflife=n_months * 21)
     vols = cov_to_vols(cov)
     betas = pd.Series(
         {(fx, cds): cov.loc[fx, cds] / (vols[cds] ** 2) for fx, cds in pairs}
