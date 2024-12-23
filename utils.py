@@ -218,7 +218,7 @@ def check_weights_in_tolerance(
 
 def get_available_trackers(df: pd.DataFrame, min_data_points: int = 100) -> pd.Index:
     s_data_points = (~df.isna()).sum()
-    filt = s_data_points >= min_data_points
+    filt = (s_data_points >= min_data_points) & ~df.iloc[-1].isna()
     return s_data_points[filt].index
 
 
